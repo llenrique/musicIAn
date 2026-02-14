@@ -744,6 +744,11 @@ const MidiDevice = {
     this.stopMetronome(); // Ensure regular metronome is off
 
     console.log(`▶️ Starting Demo Sequencer at ${tempo} BPM`);
+    console.log(`📋 Steps to play:`, steps.length);
+    console.log(`🎹 MIDI Access available:`, this.midiAccess ? "YES" : "NO");
+    if (this.midiAccess) {
+      console.log(`   Outputs available:`, this.midiAccess.outputs.size);
+    }
     
     const beatDurationMs = 60000 / tempo;
     let currentStepIndex = 0;
@@ -761,11 +766,14 @@ const MidiDevice = {
       const step = steps[currentStepIndex];
       const stepDurationMs = step.duration_beats * beatDurationMs;
       
+      console.log(`📍 Demo Step ${currentStepIndex + 1}/${steps.length}: "${step.text}" - ${step.notes.length} notes`);
+      
       // 1. Update UI (highlight notes on staff/keyboard)
       this.pushEvent("demo_step_update", { step_index: step.step_index });
       
       // 2. Play Notes
       step.notes.forEach(midi => {
+        console.log(`   🎵 Playing MIDI ${midi} for ${((stepDurationMs / 1000) * 0.9).toFixed(2)}s`);
         // Play note with duration slightly shorter than full step to articulate
         this.sendMidiOut(midi, (stepDurationMs / 1000) * 0.9);
         // Trigger visual effect locally
