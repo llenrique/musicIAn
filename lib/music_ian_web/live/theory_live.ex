@@ -226,21 +226,14 @@ defmodule MusicIanWeb.TheoryLive do
 
   def handle_event("demo_finished", _, socket) do
     if socket.assigns.lesson_active do
-      # Use start_practice to properly reset step_index and stats
-      new_state = MusicIan.Practice.LessonEngine.start_practice(socket.assigns.lesson_state)
-      steps = socket.assigns.current_lesson.steps
-      tempo = socket.assigns.tempo
-
+      # === FIX: Don't auto-start practice after demo ===
+      # Instead, wait for user to manually start with "begin_practice" button
       {:noreply,
        socket
-       |> assign(:lesson_phase, :active)
-       |> assign(:lesson_state, new_state)
-       |> assign(:current_step_index, 0)
-       |> assign(:lesson_stats, %{correct: 0, errors: 0})
-       |> push_event("lesson_started", %{
-         steps: steps,
-         tempo: tempo,
-         metronome_active: true
+       |> assign(:lesson_phase, :post_demo)
+       |> assign(:lesson_feedback, %{
+         status: :info,
+         message: "Demo completado. Presiona 'Comenzar Práctica' para empezar."
        })}
     else
       {:noreply, socket}
@@ -1096,12 +1089,30 @@ defmodule MusicIanWeb.TheoryLive do
               <p class="text-slate-500 text-sm">Síncronízate con el metronoma</p>
             </div>
           </div>
-        <% end %>
-        
-    <!-- Lesson Overlay (Floating) - MOVED BELOW KEYBOARD -->
+         <% end %>
+         
+     <!-- Post-Demo Confirmation Modal -->
+         <%= if @lesson_active && @lesson_phase == :post_demo do %>
+           <div class="absolute inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center">
+             <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+               <h2 class="text-2xl font-bold text-slate-800 mb-4">Demostración Completada</h2>
+               <p class="text-slate-600 text-base mb-6">
+                 Ahora estás listo para practicar. Presiona el botón a continuación para comenzar.
+               </p>
+               <button
+                 phx-click="begin_practice"
+                 class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-6 rounded-lg transition-colors w-full"
+               >
+                 Comenzar Práctica
+               </button>
+             </div>
+           </div>
+         <% end %>
+         
+     <!-- Lesson Overlay (Floating) - MOVED BELOW KEYBOARD -->
 
 
-        <!-- Lesson Completion Modal -->
+         <!-- Lesson Completion Modal -->
         <%= if @lesson_active && @lesson_phase == :summary do %>
           <% total = @lesson_stats.correct + @lesson_stats.errors
           accuracy = if total > 0, do: @lesson_stats.correct / total * 100, else: 0
