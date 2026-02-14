@@ -231,14 +231,15 @@ const MidiDevice = {
   },
 
   onMIDISuccess(midiAccess) {
-    console.log("✅ MIDI Access Granted");
+    // === DISABLED: Connection logs (too noisy) ===
+    // console.log("✅ MIDI Access Granted");
     this.midiAccess = midiAccess; // Store for output access
     
     const inputs = Array.from(midiAccess.inputs.values()).map(i => i.name);
     const outputs = Array.from(midiAccess.outputs.values()).map(i => i.name);
 
-    console.log("Available Inputs:", inputs);
-    console.log("Available Outputs:", outputs);
+    // console.log("Available Inputs:", inputs);
+    // console.log("Available Outputs:", outputs);
     
     // Notify server of successful connection with retry mechanism
     this.sendConnectionStatus(inputs, outputs);
@@ -250,7 +251,8 @@ const MidiDevice = {
 
     // Listen for new devices connecting
     midiAccess.onstatechange = (e) => {
-      console.log("🔌 MIDI Connection Event:", e.port.name, e.port.state);
+      // === DISABLED: Connection event logs (too noisy) ===
+      // console.log("🔌 MIDI Connection Event:", e.port.name, e.port.state);
       
       // Re-scan inputs when any connection change happens
       // This handles both new connections and re-connections
@@ -316,9 +318,11 @@ const MidiDevice = {
     
     if (outputsFound === 0) {
       console.warn("⚠️ No MIDI Output devices found.");
-    } else {
-      console.log(`📤 Sent Note ON ${midi} (Vel ${velocity}) to Channel 1`);
     }
+    // === DISABLED: Note On logs (too noisy) ===
+    // else {
+    //    console.log(`📤 Sent Note ON ${midi} (Vel ${velocity}) to Channel 1`);
+    // }
   },
 
   sendNoteOff(midi) {
@@ -391,10 +395,10 @@ const MidiDevice = {
         return;
     }
     
-    // Log only relevant Note On/Off messages
-    if (command === 9 || command === 8) {
-        console.log(`🎹 MIDI IN: Cmd=${command} Ch=${channel} Note=${note} Vel=${velocity}`);
-    }
+    // === DISABLED: Log only relevant Note On/Off messages (too noisy) ===
+    // if (command === 9 || command === 8) {
+    //     console.log(`🎹 MIDI IN: Cmd=${command} Ch=${channel} Note=${note} Vel=${velocity}`);
+    // }
 
     // Note On (144-159) -> 9
     if (command === 9) {
@@ -423,11 +427,12 @@ const MidiDevice = {
           ...timingInfo
         });
         
-        console.log(
-          `🎵 MIDI Note On: ${note} | Step ${this.currentStepIndex} | ` +
-          `Beat ${expectedBeat} | Timing: ${timingInfo.status} (${timingInfo.deviation.toFixed(0)}ms) | ` +
-          `Severity: ${timingInfo.severity}`
-        );
+        // === DISABLED: Too noisy during testing ===
+        // console.log(
+        //   `🎵 MIDI Note On: ${note} | Step ${this.currentStepIndex} | ` +
+        //   `Beat ${expectedBeat} | Timing: ${timingInfo.status} (${timingInfo.deviation.toFixed(0)}ms) | ` +
+        //   `Severity: ${timingInfo.severity}`
+        // );
         
         // Still send to server for validation/tracking
         this.safePushEvent("midi_note_on", { 
@@ -479,9 +484,9 @@ const MidiDevice = {
         const avgDelta = this.clockSum / 24;
         const bpm = Math.round(60000 / (24 * avgDelta));
         
-        // Log BPM change if significant
+        // === DISABLED: Log BPM change if significant (too noisy) ===
+        // console.log(`🎹 MIDI IN CLOCK DETECTED: ~${bpm} BPM`);
         if (!this.lastDetectedBPM || Math.abs(this.lastDetectedBPM - bpm) > 1) {
-            console.log(`🎹 MIDI IN CLOCK DETECTED: ~${bpm} BPM`);
             this.lastDetectedBPM = bpm;
             this.pushEvent("bpm_detected", { bpm: bpm });
         }

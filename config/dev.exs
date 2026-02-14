@@ -73,6 +73,14 @@ config :music_ian, dev_routes: true
 # Do not include metadata nor timestamps in development logs
 config :logger, :default_formatter, format: "[$level] $message\n"
 
+# === Disable debug logs from Phoenix/LiveView (too noisy) ===
+config :logger,
+  level: :info,
+  # Only show these levels in development
+  compile_time_purge_matching: [
+    [application: :phoenix_live_view]
+  ]
+
 # Set a higher stacktrace during development. Avoid configuring such
 # in production as building large stacktraces may be expensive.
 config :phoenix, :stacktrace_depth, 20

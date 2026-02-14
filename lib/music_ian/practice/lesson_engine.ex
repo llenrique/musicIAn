@@ -202,6 +202,7 @@ defmodule MusicIan.Practice.LessonEngine do
         timing_info \\ nil
       ) do
     current_step = Enum.at(state.lesson.steps, state.step_index)
+    current_step_text = current_step[:text] || "???"
 
     # Normalize target notes
     target_notes = current_step[:notes] || [current_step[:note]]
@@ -209,14 +210,17 @@ defmodule MusicIan.Practice.LessonEngine do
     held_set = MapSet.new(held_notes)
 
     # === DEBUG LOGGING ===
+    IO.puts("")
+    IO.puts("═════════════════════════════════════════════════════════════════")
     IO.inspect({:validation_state, 
       step_index: state.step_index,
+      step_text: current_step_text,
       target_notes: target_notes,
       held_notes: held_notes,
       latest_note: latest_note,
       held_set: held_set,
       target_set: target_set
-    }, label: "🔍 LESSON VALIDATION")
+    }, label: "🔍 VALIDATING STEP #{state.step_index}: #{current_step_text}")
 
     # Check if all target notes are held
     all_target_notes_held = MapSet.subset?(target_set, held_set)
@@ -279,9 +283,16 @@ defmodule MusicIan.Practice.LessonEngine do
   # --- Private Helpers ---
 
   defp handle_success(state, timing_info \\ nil) do
+    current_step = Enum.at(state.lesson.steps, state.step_index)
+    current_step_text = current_step[:text] || "???"
+    
+    IO.puts("✅ SUCCESS on STEP #{state.step_index}: #{current_step_text}")
+    
     new_stats = Map.update!(state.stats, :correct, &(&1 + 1))
     next_index = state.step_index + 1
     total_steps = length(state.lesson.steps)
+    
+    IO.puts("   → Incrementing step_index from #{state.step_index} to #{next_index}")
 
     # === TIMING VALIDATION ===
     # Check if note was played on time
