@@ -41,6 +41,25 @@ const MusicStaff = {
   },
 
   updated() {
+    // Reset tooltip state when updated (e.g., tonality change)
+    this.tooltipInitialized = false;
+    this.overlay = null;
+    
+    // Reload explanations from dataset
+    this.explanations = {};
+    try {
+      const explanationsJSON = this.el.dataset.explanations;
+      if (explanationsJSON) {
+        const expl = JSON.parse(explanationsJSON);
+        expl.forEach(e => {
+          this.explanations[e.name] = e;
+        });
+        console.log("✓ Reloaded explanations for tonality change:", Object.keys(this.explanations).length);
+      }
+    } catch (e) {
+      console.warn("Could not parse explanations on update:", e);
+    }
+    
     this.draw();
   },
 

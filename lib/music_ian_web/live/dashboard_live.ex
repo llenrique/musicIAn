@@ -132,7 +132,7 @@ defmodule MusicIanWeb.DashboardLive do
 
   # This simulates an AI analysis based on the lesson type and error rate
   # In the future, this could use detailed error logs (e.g. specific wrong notes played)
-  defp analyze_performance(lesson_id, accuracy, error_count) do
+  defp analyze_performance(lesson_id, accuracy, _error_count) do
     cond do
       accuracy == 100 ->
         %{
