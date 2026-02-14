@@ -3,6 +3,7 @@ import { Renderer, Stave, StaveNote, Accidental, Voice, Formatter, StaveConnecto
 const MusicStaff = {
   mounted() {
     this.div = this.el;
+    this.tooltipInitialized = false;
     
     // Store highlighted notes (Set of MIDI numbers)
     this.highlightedMidis = new Set();
@@ -16,6 +17,7 @@ const MusicStaff = {
         expl.forEach(e => {
           this.explanations[e.name] = e;
         });
+        console.log("✓ Loaded explanations:", Object.keys(this.explanations));
       }
     } catch (e) {
       console.warn("Could not parse explanations:", e);
@@ -34,9 +36,6 @@ const MusicStaff = {
 
     this.resizeObserver = new ResizeObserver(() => this.draw());
     this.resizeObserver.observe(this.div);
-    
-    // Initialize tooltip
-    this.initTooltip();
 
     this.draw();
   },
@@ -285,9 +284,18 @@ const MusicStaff = {
              // But maybe we want to show *any* note played?
              // The current implementation highlights ANY note played if it exists in the score.
              // That satisfies "reflect what is being played".
-        }
-    }
-  },
+         }
+     }
+     
+     // Initialize tooltip AFTER SVG is rendered
+     setTimeout(() => {
+       if (!this.tooltipInitialized) {
+         console.log("Initializing tooltip now");
+         this.initTooltip();
+         this.tooltipInitialized = true;
+       }
+     }, 100);
+   },
 
   initTooltip() {
     // Create tooltip element
@@ -302,7 +310,7 @@ const MusicStaff = {
         border-radius: 8px;
         font-size: 12px;
         line-height: 1.5;
-        max-width: 300px;
+        max-width: 320px;
         z-index: 9999;
         pointer-events: none;
         opacity: 0;
@@ -313,58 +321,67 @@ const MusicStaff = {
       document.body.appendChild(this.tooltip);
     }
     
-    // Add mouse move listener to SVG
-    const svg = this.div.querySelector("svg");
-    if (svg) {
-      svg.addEventListener("mousemove", (e) => this.handleSVGMouseMove(e));
-      svg.addEventListener("mouseout", () => this.hideTooltip());
+    // Create invisible overlay over staff for mouse tracking
+    if (!this.overlay) {
+      this.overlay = document.createElement("div");
+      this.overlay.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1000;
+        pointer-events: auto;
+        cursor: pointer;
+      `;
+      
+      const svg = this.div.querySelector("svg");
+      if (svg && svg.parentElement) {
+        // Insert overlay after SVG
+        svg.parentElement.style.position = "relative";
+        svg.parentElement.appendChild(this.overlay);
+        
+        this.overlay.addEventListener("mousemove", (e) => this.handleOverlayMouseMove(e));
+        this.overlay.addEventListener("mouseout", () => this.hideTooltip());
+      }
     }
   },
 
-  handleSVGMouseMove(e) {
-    const svg = this.div.querySelector("svg");
-    if (!svg) return;
+  handleOverlayMouseMove(e) {
+    const explanationsArray = Object.values(this.explanations);
+    const notesData = JSON.parse(this.el.dataset.notes || "[]");
     
-    // Get all text elements in the SVG (note names)
-    const textElements = svg.querySelectorAll("text");
-    let found = false;
+    // Simple approach: divide the overlay width into sections for each note
+    const overlay = this.overlay;
+    if (!overlay) return;
     
-    for (let textEl of textElements) {
-      const rect = textEl.getBoundingClientRect();
-      const mouseX = e.clientX;
-      const mouseY = e.clientY;
-      
-      // Check if mouse is near the text element
-      if (
-        mouseX >= rect.left - 10 &&
-        mouseX <= rect.right + 10 &&
-        mouseY >= rect.top - 10 &&
-        mouseY <= rect.bottom + 10
-      ) {
-        const noteName = textEl.textContent.trim();
-        const explanation = this.explanations[noteName];
-        
-        if (explanation) {
-          this.showTooltip(e.clientX, e.clientY, explanation);
-          found = true;
-          break;
-        }
-      }
-    }
+    const overlayRect = overlay.getBoundingClientRect();
     
-    if (!found) {
+    // Relative position within overlay
+    const relativeX = e.clientX - overlayRect.left;
+    
+    // Approximate note width
+    const noteWidth = overlayRect.width / notesData.length;
+    const estimatedNoteIndex = Math.floor(relativeX / noteWidth);
+    
+    if (estimatedNoteIndex >= 0 && estimatedNoteIndex < explanationsArray.length) {
+      const explanation = explanationsArray[estimatedNoteIndex];
+      this.showTooltip(e.clientX, e.clientY, explanation);
+    } else {
       this.hideTooltip();
     }
   },
 
   showTooltip(x, y, explanation) {
+    if (!explanation) return;
+    
     const content = `
-      <strong>${explanation.name}</strong> - ${explanation.degree}<br/>
-      <span style="color: #cbd5e1; font-size: 11px;">
+      <strong style="display: block; margin-bottom: 4px;">${explanation.name} - ${explanation.degree}</strong>
+      <span style="color: #cbd5e1; font-size: 11px; display: block; margin-bottom: 6px;">
         ${explanation.interval}
       </span>
       ${explanation.has_accidental ? `
-        <br/><span style="color: #fbbf24;">
+        <span style="color: #fbbf24; font-size: 11px; display: block;">
           ⚠️ ${explanation.accidental_reason}
         </span>
       ` : ""}
@@ -373,18 +390,25 @@ const MusicStaff = {
     this.tooltip.innerHTML = content;
     
     // Position tooltip near cursor
-    let top = y + 10;
-    let left = x + 10;
+    let top = y + 15;
+    let left = x + 15;
     
-    // Adjust if goes off screen
-    const tooltipWidth = 300;
+    // Adjust if goes off screen horizontally
+    const tooltipWidth = 320;
     if (left + tooltipWidth > window.innerWidth) {
       left = window.innerWidth - tooltipWidth - 10;
+    }
+    
+    // Adjust if goes off screen vertically
+    const tooltipHeight = this.tooltip.offsetHeight || 100;
+    if (top + tooltipHeight > window.innerHeight) {
+      top = y - tooltipHeight - 10;
     }
     
     this.tooltip.style.left = left + "px";
     this.tooltip.style.top = top + "px";
     this.tooltip.style.opacity = "1";
+    this.tooltip.style.pointerEvents = "none";
   },
 
   hideTooltip() {
