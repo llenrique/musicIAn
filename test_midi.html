@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test MIDI - Yamaha YDP-105 Metronome</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        input {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .log {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+        .info {
+            color: blue;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎹 Test MIDI - Yamaha YDP-105</h1>
+        
+        <div class="section">
+            <h3>1. Seleccionar dispositivo MIDI</h3>
+            <select id="midiSelect">
+                <option value="">-- Selecciona un dispositivo MIDI --</option>
+            </select>
+            <button onclick="listMidiDevices()">Actualizar dispositivos</button>
+            <button onclick="connectMidi()" id="connectBtn">Conectar</button>
+        </div>
+
+        <div class="section">
+            <h3>2. Test: Enviar Note On a diferentes notas</h3>
+            <p>Presiona estos botones y observa si el piano responde</p>
+            
+            <div>
+                <button onclick="sendNoteOn(60, 'C4 (Do4)')">C4 (Do4) - MIDI 60</button>
+                <button onclick="sendNoteOn(61, 'C#4 (Do#4)')">C#4 (Do#4) - MIDI 61</button>
+                <button onclick="sendNoteOn(62, 'D4 (Re4)')">D4 (Re4) - MIDI 62</button>
+                <button onclick="sendNoteOn(64, 'E4 (Mi4)')">E4 (Mi4) - MIDI 64</button>
+                <button onclick="sendNoteOn(65, 'F4 (Fa4)')">F4 (Fa4) - MIDI 65</button>
+                <button onclick="sendNoteOn(67, 'G4 (Sol4)')">G4 (Sol4) - MIDI 67</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>3. Test: Metrónomo</h3>
+            <p>Según el diagrama del piano:</p>
+            <button onclick="toggleMetronome()">Toggle Metronome (FUNCTION + C#4)</button>
+            <button onclick="setTempo(120)">Set Tempo 120 BPM</button>
+        </div>
+
+        <div class="section">
+            <h3>4. Test: Note On/Off secuencia</h3>
+            <p>Enviar Note On seguido de Note Off</p>
+            <input type="text" id="noteInput" placeholder="MIDI note (0-127)" value="60">
+            <input type="text" id="velocityInput" placeholder="Velocity (0-127)" value="127">
+            <button onclick="sendNoteSequence()">Enviar Note On + Off</button>
+        </div>
+
+        <div class="section">
+            <h3>📊 Log de eventos</h3>
+            <button onclick="clearLog()">Limpiar log</button>
+            <div id="log" class="log">
+                <div class="info">Esperando conexión MIDI...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let midiOutput = null;
+        const logDiv = document.getElementById('log');
+        const midiSelect = document.getElementById('midiSelect');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(div);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLog() {
+            logDiv.innerHTML = '';
+        }
+
+        async function listMidiDevices() {
+            try {
+                const access = await navigator.requestMIDIAccess();
+                const outputs = access.outputs.values();
+                
+                midiSelect.innerHTML = '<option value="">-- Selecciona un dispositivo MIDI --</option>';
+                let found = false;
+
+                for (let output of outputs) {
+                    found = true;
+                    const option = document.createElement('option');
+                    option.value = output.id;
+                    option.textContent = output.name;
+                    midiSelect.appendChild(option);
+                    log(`Dispositivo MIDI encontrado: ${output.name}`, 'success');
+                }
+
+                if (!found) {
+                    log('No se encontraron dispositivos MIDI', 'error');
+                }
+            } catch (error) {
+                log(`Error al acceder a MIDI: ${error.message}`, 'error');
+            }
+        }
+
+        async function connectMidi() {
+            const selectedId = midiSelect.value;
+            if (!selectedId) {
+                log('Selecciona un dispositivo primero', 'error');
+                return;
+            }
+
+            try {
+                const access = await navigator.requestMIDIAccess();
+                midiOutput = access.outputs.get(selectedId);
+                
+                if (midiOutput) {
+                    log(`✓ Conectado a: ${midiOutput.name}`, 'success');
+                    document.getElementById('connectBtn').textContent = '✓ Conectado';
+                    document.getElementById('connectBtn').disabled = true;
+                } else {
+                    log('No se pudo conectar al dispositivo', 'error');
+                }
+            } catch (error) {
+                log(`Error de conexión: ${error.message}`, 'error');
+            }
+        }
+
+        function sendNoteOn(note, name) {
+            if (!midiOutput) {
+                log('MIDI no conectado', 'error');
+                return;
+            }
+
+            try {
+                // Note On: status 0x90 (channel 1) + note + velocity
+                midiOutput.send([0x90, note, 127]);
+                log(`Note On → ${name} (MIDI ${note})`, 'success');
+
+                // Auto-off después de 200ms
+                setTimeout(() => {
+                    midiOutput.send([0x80, note, 0]);
+                    log(`Note Off ← ${name}`, 'info');
+                }, 200);
+            } catch (error) {
+                log(`Error enviando Note On: ${error.message}`, 'error');
+            }
+        }
+
+        function sendNoteSequence() {
+            if (!midiOutput) {
+                log('MIDI no conectado', 'error');
+                return;
+            }
+
+            const note = parseInt(document.getElementById('noteInput').value);
+            const velocity = parseInt(document.getElementById('velocityInput').value);
+
+            if (isNaN(note) || note < 0 || note > 127) {
+                log('Nota MIDI inválida (0-127)', 'error');
+                return;
+            }
+
+            try {
+                // Note On
+                midiOutput.send([0x90, note, velocity]);
+                log(`Note On: MIDI ${note}, Velocity ${velocity}`, 'success');
+
+                // Note Off después de 100ms
+                setTimeout(() => {
+                    midiOutput.send([0x80, note, 0]);
+                    log(`Note Off: MIDI ${note}`, 'info');
+                }, 100);
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        function toggleMetronome() {
+            if (!midiOutput) {
+                log('MIDI no conectado', 'error');
+                return;
+            }
+
+            try {
+                log('Intentando activar metrónomo (FUNCTION + C#4)...', 'info');
+                
+                // Enviar Note On a C#4 (MIDI 61)
+                midiOutput.send([0x90, 61, 127]);
+                log(`Note On C#4 (MIDI 61)`, 'success');
+
+                setTimeout(() => {
+                    midiOutput.send([0x80, 61, 0]);
+                    log(`Note Off C#4`, 'info');
+                }, 100);
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        function setTempo(bpm) {
+            if (!midiOutput) {
+                log('MIDI no conectado', 'error');
+                return;
+            }
+
+            try {
+                log(`Intentando establecer tempo a ${bpm} BPM...`, 'info');
+                
+                // Convertir BPM a dígitos
+                const digits = bpm.toString().split('').map(Number);
+                log(`Dígitos: ${digits.join(', ')}`, 'info');
+
+                // Mapear dígitos a notas MIDI
+                // 0->D4(62), 1->E4(64), 2->F4(65), 3->G4(67), 4->A4(69), 5->B4(71), 6->C5(72), 7->D5(74), 8->E5(76), 9->F5(77)
+                const digitToNote = {
+                    0: 62, 1: 64, 2: 65, 3: 67, 4: 69,
+                    5: 71, 6: 72, 7: 74, 8: 76, 9: 77
+                };
+
+                // Enviar cada dígito con delay
+                digits.forEach((digit, index) => {
+                    setTimeout(() => {
+                        const note = digitToNote[digit];
+                        midiOutput.send([0x90, note, 127]);
+                        log(`Dígito ${digit} → MIDI ${note}`, 'success');
+
+                        setTimeout(() => {
+                            midiOutput.send([0x80, note, 0]);
+                        }, 50);
+                    }, index * 150);
+                });
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-cargar dispositivos al abrir
+        window.addEventListener('load', listMidiDevices);
+    </script>
+</body>
+</html>

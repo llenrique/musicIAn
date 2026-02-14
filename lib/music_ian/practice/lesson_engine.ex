@@ -208,12 +208,38 @@ defmodule MusicIan.Practice.LessonEngine do
     target_set = MapSet.new(target_notes)
     held_set = MapSet.new(held_notes)
 
-    if MapSet.subset?(target_set, held_set) do
+    # Check if all target notes are held
+    all_target_notes_held = MapSet.subset?(target_set, held_set)
+    
+    # Check for extra notes (strict mode: no extra notes allowed)
+    has_extra_notes = not MapSet.equal?(target_set, held_set)
+
+    if all_target_notes_held and not has_extra_notes do
+      # ✅ Perfect: All required notes, no extra notes
       handle_success(state, timing_info)
     else
-      # If the latest note played is NOT part of the target chord, it's an error
+      # ❌ Error conditions:
+      # 1. Latest note is not in target set
+      # 2. Extra notes are being held (strict validation)
+      
       if not MapSet.member?(target_set, latest_note) do
+        # Wrong note played
         handle_error(state, latest_note, target_notes, timing_info)
+      else if has_extra_notes do
+        # Extra notes held (user building chord messily)
+        # Only error if extra notes are WAY off (more than 2 semitones away)
+        extra_notes = MapSet.difference(held_set, target_set)
+        wrong_extra = Enum.any?(extra_notes, fn note -> 
+          # Check if extra note is at least 2 semitones away from any target note
+          Enum.all?(target_notes, fn target -> abs(note - target) > 1 end)
+        end)
+        
+        if wrong_extra do
+          handle_error(state, latest_note, target_notes, timing_info)
+        else
+          # Extra notes are close/adjacent - user building slowly. Wait.
+          {:ignore, state}
+        end
       else
         # It's a correct note, but the chord is incomplete. Wait.
         {:ignore, state}

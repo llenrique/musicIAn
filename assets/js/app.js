@@ -26,11 +26,13 @@ import topbar from "../vendor/topbar"
 import AudioEngine from "./hooks/AudioEngine"
 import MusicStaff from "./hooks/MusicStaff"
 import MidiDevice from "./hooks/MidiDevice"
+import MidiDeviceSelector from "./hooks/MidiDeviceSelector"
 
 const hooks = {
   AudioEngine: AudioEngine,
   MusicStaff: MusicStaff,
-  MidiDevice: MidiDevice
+  MidiDevice: MidiDevice,
+  MidiDeviceSelector: MidiDeviceSelector
 }
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")

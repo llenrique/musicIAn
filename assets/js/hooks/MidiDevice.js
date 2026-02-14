@@ -689,7 +689,7 @@ const MidiDevice = {
         stepIndex: i,
         expectedBeat: currentBeat,
         beatWindowStart: currentBeat - this.timingTolerance / this.beatDurationMs,
-        beatWindowEnd: currentBeat + (duration - 1) * this.beatDurationMs + this.timingTolerance / this.beatDurationMs,
+        beatWindowEnd: currentBeat + duration * this.beatDurationMs + this.timingTolerance / this.beatDurationMs,
         duration: duration,
         text: step.text
       };

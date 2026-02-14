@@ -23,6 +23,7 @@ defmodule MusicIanWeb.Router do
 
     live "/", TheoryLive
     live "/dashboard", DashboardLive
+    live "/metronome", MetronomeExampleLive
   end
 
   # Other scopes may use custom stacks.
