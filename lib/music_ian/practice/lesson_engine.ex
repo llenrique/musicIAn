@@ -225,24 +225,26 @@ defmodule MusicIan.Practice.LessonEngine do
       if not MapSet.member?(target_set, latest_note) do
         # Wrong note played
         handle_error(state, latest_note, target_notes, timing_info)
-      else if has_extra_notes do
-        # Extra notes held (user building chord messily)
-        # Only error if extra notes are WAY off (more than 2 semitones away)
-        extra_notes = MapSet.difference(held_set, target_set)
-        wrong_extra = Enum.any?(extra_notes, fn note -> 
-          # Check if extra note is at least 2 semitones away from any target note
-          Enum.all?(target_notes, fn target -> abs(note - target) > 1 end)
-        end)
-        
-        if wrong_extra do
-          handle_error(state, latest_note, target_notes, timing_info)
+      else
+        if has_extra_notes do
+          # Extra notes held (user building chord messily)
+          # Only error if extra notes are WAY off (more than 2 semitones away)
+          extra_notes = MapSet.difference(held_set, target_set)
+          wrong_extra = Enum.any?(extra_notes, fn note -> 
+            # Check if extra note is at least 2 semitones away from any target note
+            Enum.all?(target_notes, fn target -> abs(note - target) > 1 end)
+          end)
+          
+          if wrong_extra do
+            handle_error(state, latest_note, target_notes, timing_info)
+          else
+            # Extra notes are close/adjacent - user building slowly. Wait.
+            {:ignore, state}
+          end
         else
-          # Extra notes are close/adjacent - user building slowly. Wait.
+          # It's a correct note, but the chord is incomplete. Wait.
           {:ignore, state}
         end
-      else
-        # It's a correct note, but the chord is incomplete. Wait.
-        {:ignore, state}
       end
     end
   end
