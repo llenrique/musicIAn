@@ -1,0 +1,205 @@
+═══════════════════════════════════════════════════════════════════════════════
+PLANTILLA DE EMAIL PARA YAMAHA - SOLICITUD DE API DE METRÓNOMO
+═══════════════════════════════════════════════════════════════════════════════
+
+ASUNTO (EN):
+Feature Request: Public API/Specification for YDP-105 Metronome Control
+
+ASUNTO (ES):
+Solicitud de Funcionalidad: API Pública para Control del Metrónomo YDP-105
+
+───────────────────────────────────────────────────────────────────────────────
+CUERPO (EN):
+───────────────────────────────────────────────────────────────────────────────
+
+Dear Yamaha Music Education / Developer Relations Team,
+
+We are writing to request technical documentation or an official API for 
+controlling the metronome on the Yamaha YDP-105 digital piano.
+
+CONTEXT:
+We are developing musicIAn (https://github.com/[your-github]/musicIAn), 
+an open-source educational platform for music theory that integrates with 
+Yamaha digital pianos via USB MIDI.
+
+THE PROBLEM:
+We discovered that Yamaha's Smart Pianist application can control the 
+metronome remotely (toggle on/off, change tempo, change time signature), 
+but the protocol used is not publicly documented.
+
+We have invested significant research effort:
+✓ Tested all standard MIDI messages (Note On, Control Change, Program Change)
+✓ Tested SysEx messages in various formats
+✓ Tested USB HID direct communication
+✓ Performed exhaustive testing (2+ million message combinations)
+✓ Monitored network traffic with midimonitor.com
+
+CONCLUSION:
+Smart Pianist uses a proprietary USB protocol that is not part of the 
+MIDI standard specification.
+
+OUR REQUEST:
+Would Yamaha be willing to:
+
+1. Publish the technical specification for metronome control?
+2. Provide an official SDK or library?
+3. Define standard MIDI Control Changes for these functions?
+4. Create a public Developer API?
+
+WHY THIS MATTERS:
+- Metronome is a FUNDAMENTAL feature for music education
+- Many third-party apps (not just Smart Pianist) need this
+- Currently, only Yamaha's own app can control it
+- Users expect this functionality (because Smart Pianist has it)
+- This would strengthen Yamaha's ecosystem for developers
+
+USE CASE:
+Our platform allows students to:
+1. Learn music theory interactively
+2. Play on the connected piano
+3. Receive feedback on their playing
+
+The metronome is essential for timing practice. Without remote control, 
+students must stop playing to manually adjust the piano's metronome.
+
+ALTERNATIVE SOLUTIONS CONSIDERED:
+- Software metronome (implemented, but not ideal)
+- Reverse-engineering Smart Pianist (ethically questionable)
+- Using other brands' pianos (defeats purpose of Yamaha integration)
+
+NEXT STEPS:
+If you're interested in discussing this, we'd be happy to:
+- Show you our research
+- Explain our use case in detail
+- Discuss how an API could benefit the ecosystem
+- Participate in a closed beta if needed
+
+We believe this is a win-win: better developer tools = better apps = 
+more people buying Yamaha pianos.
+
+Thank you for considering this request.
+
+Best regards,
+[Your Name]
+musicIAn Development Team
+[Your Email]
+[Your GitHub/Website]
+
+───────────────────────────────────────────────────────────────────────────────
+CUERPO (ES):
+───────────────────────────────────────────────────────────────────────────────
+
+Estimado equipo de Educación Musical / Relaciones de Desarrolladores de Yamaha,
+
+Le escribo para solicitar documentación técnica o una API oficial para 
+controlar el metrónomo del piano digital Yamaha YDP-105.
+
+CONTEXTO:
+Estamos desarrollando musicIAn (https://github.com/[tu-github]/musicIAn), 
+una plataforma de código abierto para enseñanza de teoría musical que se 
+integra con pianos digitales Yamaha vía USB MIDI.
+
+EL PROBLEMA:
+Descubrimos que la aplicación Smart Pianist de Yamaha puede controlar 
+el metrónomo remotamente (activar/desactivar, cambiar tempo, cambiar 
+compás), pero el protocolo utilizado NO está documentado públicamente.
+
+Realizamos una investigación exhaustiva:
+✓ Probamos todos los mensajes MIDI estándar (Note On, Control Change, Program Change)
+✓ Probamos mensajes SysEx en varios formatos
+✓ Probamos comunicación USB HID directa
+✓ Pruebas exhaustivas (2+ millones de combinaciones de mensajes)
+✓ Monitoreo de tráfico con midimonitor.com
+
+CONCLUSIÓN:
+Smart Pianist utiliza un protocolo USB propietario que NO forma parte 
+de la especificación MIDI estándar.
+
+NUESTRA SOLICITUD:
+¿Podría Yamaha:
+
+1. ¿Publicar la especificación técnica de control del metrónomo?
+2. ¿Proporcionar un SDK u librería oficial?
+3. ¿Definir Control Changes MIDI estándar para estas funciones?
+4. ¿Crear una API Pública para Desarrolladores?
+
+POR QUÉ ES IMPORTANTE:
+- El metrónomo es una funcionalidad FUNDAMENTAL para educación musical
+- Muchas apps third-party (no solo Smart Pianist) lo necesitan
+- Actualmente, solo la app propia de Yamaha puede controlarlo
+- Los usuarios lo esperan (porque Smart Pianist lo permite)
+- Esto fortalecería el ecosistema Yamaha para desarrolladores
+
+CASO DE USO:
+Nuestra plataforma permite a estudiantes:
+1. Aprender teoría musical de forma interactiva
+2. Tocar en el piano conectado
+3. Recibir retroalimentación sobre su ejecución
+
+El metrónomo es esencial para la práctica de timing. Sin control remoto, 
+los estudiantes deben dejar de tocar para ajustar manualmente el metrónomo 
+del piano.
+
+SOLUCIONES ALTERNATIVAS CONSIDERADAS:
+- Metrónomo de software (implementado, pero no ideal)
+- Reverse-engineering de Smart Pianist (éticamente cuestionable)
+- Usar pianos de otras marcas (derrota el propósito)
+
+PRÓXIMOS PASOS:
+Si les interesa discutir esto, estaríamos felices de:
+- Mostrarles nuestra investigación
+- Explicar nuestro caso de uso en detalle
+- Discutir cómo una API podría beneficiar el ecosistema
+- Participar en un beta cerrado si es necesario
+
+Creemos que esto es beneficioso para ambos: mejores herramientas para 
+desarrolladores = mejores apps = más gente comprando pianos Yamaha.
+
+Agradezco su consideración.
+
+Atentamente,
+[Tu Nombre]
+Equipo de Desarrollo musicIAn
+[Tu Email]
+[Tu GitHub/Sitio Web]
+
+───────────────────────────────────────────────────────────────────────────────
+OPCIONES DE ENVÍO:
+───────────────────────────────────────────────────────────────────────────────
+
+1. EMAIL FORMAL:
+   - support@yamaha-pro.com
+   - developer@yamaha.com
+   - education@yamaha.com
+   - Contact form en www.yamaha.com
+
+2. REDES SOCIALES (con @mention):
+   - @YamahaMusic (Twitter)
+   - @YamahaPro (Twitter)
+   - Yamaha Music Official (Facebook)
+   - LinkedIn: Yamaha Corporation
+
+3. FOROS:
+   - https://www.yamahamusicians.com (si existe)
+   - Foro oficial de Yamaha pianos
+
+4. GITHUB:
+   - Si Yamaha tiene repos públicos, crear Issue
+
+5. LINKEDIN:
+   - Contactar directamente a Product Manager de Yamaha
+
+───────────────────────────────────────────────────────────────────────────────
+TIPS PARA AUMENTAR PROBABILIDAD DE RESPUESTA:
+───────────────────────────────────────────────────────────────────────────────
+
+✓ Sé profesional pero genuino
+✓ Muestra investigación exhaustiva (demuestra seriedad)
+✓ Explica por qué es importante (educación, no dinero)
+✓ Proporciona alternativas (muestra que no estás pidiendo gratis)
+✓ Menciona que beneficia a Yamaha (ecosistema, desarrolladores)
+✓ Se específico (YDP-105, no "todos los pianos")
+✓ Incluye links a tu proyecto (credibilidad)
+✓ Ofrece colaboración (no solo pedir)
+
+───────────────────────────────────────────────────────────────────────────────
