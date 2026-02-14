@@ -41,15 +41,56 @@ defmodule MusicIanWeb.Components.PracticeComparison do
         <div class="p-4 space-y-3">
           <!-- Expected Note -->
           <%= if @step_index < length(@lesson.steps) do %>
-            <% current_step = Enum.at(@lesson.steps, @step_index) %>
+            <% 
+              current_step = Enum.at(@lesson.steps, @step_index)
+              duration = current_step[:duration] || 1
+              # Map durations to visual representations
+              note_symbol = case duration do
+                2.0 -> "𝅗𝅥"  # Blanca (White note)
+                1.0 -> "♩"   # Negra (Quarter note)
+                0.5 -> "♪"   # Corchea (Eighth note)
+                0.25 -> "𝅘𝅥𝅮"  # Semicorchea (Sixteenth note)
+                _ -> "♩"
+              end
+            %>
             <div class="border-l-4 border-blue-500 pl-3">
               <p class="text-xs text-slate-500 uppercase font-bold">Esperado</p>
               <p class="text-lg font-bold text-blue-600">
                 {current_step[:text]}
               </p>
-              <p class="text-xs text-slate-400 mt-1">
-                Duración: {current_step[:duration] || 1} beat
-              </p>
+              
+              <!-- === FIX: Visual duration indicator for beginners === -->
+              <div class="mt-3 space-y-2">
+                <p class="text-xs text-slate-600 font-semibold">
+                  Presiona {duration}x
+                </p>
+                
+                <!-- Visual bar showing note duration -->
+                <div class="flex items-center gap-2">
+                  <svg class="w-20 h-6">
+                    <!-- Background bar -->
+                    <rect x="0" y="10" width="80" height="6" fill="#e2e8f0" rx="3" />
+                    <!-- Duration fill -->
+                    <rect 
+                      x="0" y="10" 
+                      width={duration * 20}
+                      height="6" 
+                      fill="#3b82f6" 
+                      rx="3"
+                    />
+                  </svg>
+                  <span class="text-2xl text-blue-600">{note_symbol}</span>
+                </div>
+                
+                <p class="text-xs text-slate-400">
+                  {cond do
+                    duration == 2.0 -> "Mantén la tecla presionada el doble"
+                    duration == 1.0 -> "Nota regular"
+                    duration == 0.5 -> "Nota rápida"
+                    true -> "Duración especial"
+                  end}
+                </p>
+              </div>
             </div>
           <% end %>
           
