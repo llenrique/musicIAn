@@ -285,17 +285,21 @@ const MidiDevice = {
   },
 
   sendMidiOut(midi, duration) {
+    console.log(`📤 sendMidiOut: MIDI ${midi}, duration ${duration}s, access=${this.midiAccess ? 'YES' : 'NO'}`);
+    
     if (!this.midiAccess) {
       console.warn("⚠️ MIDI Output: No MIDI Access available");
       return;
     }
     
     // Note On
+    console.log(`   → Calling sendNoteOn(${midi}, 100)`);
     this.sendNoteOn(midi, 100);
     
     // Note Off after duration
     if (duration) {
       setTimeout(() => {
+        console.log(`   → Calling sendNoteOff(${midi})`);
         this.sendNoteOff(midi);
       }, duration * 1000);
     }
