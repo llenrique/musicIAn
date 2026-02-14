@@ -157,6 +157,11 @@ defmodule MusicIanWeb.TheoryLive do
     end
   end
 
+  # === Alias: play_demo is same as start_demo (for post-demo modal) ===
+  def handle_event("play_demo", _, socket) do
+    handle_event("start_demo", nil, socket)
+  end
+
   def handle_event("start_demo", _, socket) do
     if socket.assigns.lesson_active do
       # Prepare sequence for client-side playback
@@ -1122,23 +1127,40 @@ defmodule MusicIanWeb.TheoryLive do
            </div>
           <% end %>
          
-     <!-- Post-Demo Confirmation Modal -->
-         <%= if @lesson_active && @lesson_phase == :post_demo do %>
-           <div class="absolute inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center">
-             <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
-               <h2 class="text-2xl font-bold text-slate-800 mb-4">Demostración Completada</h2>
-               <p class="text-slate-600 text-base mb-6">
-                 Ahora estás listo para practicar. Presiona el botón a continuación para comenzar.
-               </p>
-               <button
-                 phx-click="begin_practice"
-                 class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-6 rounded-lg transition-colors w-full"
-               >
-                 Comenzar Práctica
-               </button>
-             </div>
-           </div>
-         <% end %>
+      <!-- Post-Demo Confirmation Modal -->
+          <%= if @lesson_active && @lesson_phase == :post_demo do %>
+            <div class="absolute inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center">
+              <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+                <h2 class="text-2xl font-bold text-slate-800 mb-2">Demostración Completada</h2>
+                <p class="text-slate-600 text-base mb-6">
+                  ¿Deseas ver la demostración de nuevo o comenzar a practicar?
+                </p>
+                
+                <!-- Two Action Buttons -->
+                <div class="space-y-3">
+                  <button
+                    phx-click="play_demo"
+                    class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-colors w-full flex items-center justify-center gap-2"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+                    </svg>
+                    Ver Demo de Nuevo
+                  </button>
+                  
+                  <button
+                    phx-click="begin_practice"
+                    class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-6 rounded-lg transition-colors w-full flex items-center justify-center gap-2"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                    </svg>
+                    Comenzar Práctica
+                  </button>
+                </div>
+              </div>
+            </div>
+          <% end %>
          
      <!-- Lesson Overlay (Floating) - MOVED BELOW KEYBOARD -->
 

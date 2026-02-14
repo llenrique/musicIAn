@@ -285,7 +285,10 @@ const MidiDevice = {
   },
 
   sendMidiOut(midi, duration) {
-    if (!this.midiAccess) return;
+    if (!this.midiAccess) {
+      console.warn("⚠️ MIDI Output: No MIDI Access available");
+      return;
+    }
     
     // Note On
     this.sendNoteOn(midi, 100);
@@ -311,6 +314,7 @@ const MidiDevice = {
       try {
         // Send to Channel 1 (0x90)
         output.send([0x90, midi, velocity]);
+        console.log(`📤 Demo: Sent Note ON ${midi} (Vel ${velocity})`);
       } catch (e) {
         console.error("Error sending MIDI Note On:", e);
       }
@@ -319,10 +323,6 @@ const MidiDevice = {
     if (outputsFound === 0) {
       console.warn("⚠️ No MIDI Output devices found.");
     }
-    // === DISABLED: Note On logs (too noisy) ===
-    // else {
-    //    console.log(`📤 Sent Note ON ${midi} (Vel ${velocity}) to Channel 1`);
-    // }
   },
 
   sendNoteOff(midi) {
