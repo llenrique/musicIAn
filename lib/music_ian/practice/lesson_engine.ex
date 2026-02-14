@@ -92,9 +92,13 @@ defmodule MusicIan.Practice.LessonEngine do
   """
   def validate_timing(timing_info) do
     case timing_info do
-      %{"timingSeverity" => severity} when severity in ["error", "warning"] ->
-        # Timing error detected
+      %{"timingSeverity" => "error"} ->
+        # === HARD TIMING ERROR: Note too far from beat ===
         {:error, format_timing_error(timing_info)}
+
+      %{"timingSeverity" => "warning"} ->
+        # === SOFT TIMING WARNING: Note slightly off but acceptable ===
+        {:warning, format_timing_error(timing_info)}
 
       %{"timingStatus" => "on-time"} ->
         # Good timing
@@ -111,14 +115,20 @@ defmodule MusicIan.Practice.LessonEngine do
       "between-beats" ->
         "❌ Nota entre beats. No pertenece al ritmo esperado."
 
-      "early" when deviation < -150 ->
+      "early" when deviation < -300 ->
         "⚠️  Demasiado rápido (#{abs(trunc(deviation))}ms antes del beat)"
+
+      "early" when deviation < -150 ->
+        "⚠️  Un poco rápido (#{abs(trunc(deviation))}ms)"
 
       "early" ->
         "⚠️  Un poco rápido"
 
-      "late" when deviation > 150 ->
+      "late" when deviation > 300 ->
         "⚠️  Demasiado lento (#{trunc(deviation)}ms después del beat)"
+
+      "late" when deviation > 150 ->
+        "⚠️  Un poco lento (#{trunc(deviation)}ms)"
 
       "late" ->
         "⚠️  Un poco lento"
@@ -296,13 +306,21 @@ defmodule MusicIan.Practice.LessonEngine do
 
     # === TIMING VALIDATION ===
     # Check if note was played on time
+    # Separate warnings (deduct style points) from hard errors
     timing_message =
       if timing_info do
         case validate_timing(timing_info) do
-          {:ok, msg} -> msg
-          # Warning but still success
-          {:error, msg} -> "⚠️  " <> msg
-          _ -> ""
+          {:ok, msg} -> 
+            msg
+          {:warning, msg} -> 
+            # === FIX: Warning means correct note but timing slightly off ===
+            # Still counts as correct, but with feedback
+            msg
+          {:error, msg} -> 
+            # === This shouldn't happen in handle_success, but include for safety ===
+            "⚠️  " <> msg
+          _ -> 
+            ""
         end
       else
         ""
