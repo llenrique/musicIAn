@@ -7,6 +7,20 @@ const MusicStaff = {
     // Store highlighted notes (Set of MIDI numbers)
     this.highlightedMidis = new Set();
     
+    // Store explanations data
+    this.explanations = {};
+    try {
+      const explanationsJSON = this.el.dataset.explanations;
+      if (explanationsJSON) {
+        const expl = JSON.parse(explanationsJSON);
+        expl.forEach(e => {
+          this.explanations[e.name] = e;
+        });
+      }
+    } catch (e) {
+      console.warn("Could not parse explanations:", e);
+    }
+    
     // Listen for play_note event from server
     this.handleEvent("play_note", ({ midi }) => {
       this.highlightNote(midi);
@@ -20,6 +34,9 @@ const MusicStaff = {
 
     this.resizeObserver = new ResizeObserver(() => this.draw());
     this.resizeObserver.observe(this.div);
+    
+    // Initialize tooltip
+    this.initTooltip();
 
     this.draw();
   },
@@ -269,6 +286,110 @@ const MusicStaff = {
              // The current implementation highlights ANY note played if it exists in the score.
              // That satisfies "reflect what is being played".
         }
+    }
+  },
+
+  initTooltip() {
+    // Create tooltip element
+    if (!this.tooltip) {
+      this.tooltip = document.createElement("div");
+      this.tooltip.className = "staff-tooltip";
+      this.tooltip.style.cssText = `
+        position: fixed;
+        background: rgba(15, 23, 42, 0.95);
+        color: #f1f5f9;
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 12px;
+        line-height: 1.5;
+        max-width: 300px;
+        z-index: 9999;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        border-left: 3px solid #8b5cf6;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      `;
+      document.body.appendChild(this.tooltip);
+    }
+    
+    // Add mouse move listener to SVG
+    const svg = this.div.querySelector("svg");
+    if (svg) {
+      svg.addEventListener("mousemove", (e) => this.handleSVGMouseMove(e));
+      svg.addEventListener("mouseout", () => this.hideTooltip());
+    }
+  },
+
+  handleSVGMouseMove(e) {
+    const svg = this.div.querySelector("svg");
+    if (!svg) return;
+    
+    // Get all text elements in the SVG (note names)
+    const textElements = svg.querySelectorAll("text");
+    let found = false;
+    
+    for (let textEl of textElements) {
+      const rect = textEl.getBoundingClientRect();
+      const mouseX = e.clientX;
+      const mouseY = e.clientY;
+      
+      // Check if mouse is near the text element
+      if (
+        mouseX >= rect.left - 10 &&
+        mouseX <= rect.right + 10 &&
+        mouseY >= rect.top - 10 &&
+        mouseY <= rect.bottom + 10
+      ) {
+        const noteName = textEl.textContent.trim();
+        const explanation = this.explanations[noteName];
+        
+        if (explanation) {
+          this.showTooltip(e.clientX, e.clientY, explanation);
+          found = true;
+          break;
+        }
+      }
+    }
+    
+    if (!found) {
+      this.hideTooltip();
+    }
+  },
+
+  showTooltip(x, y, explanation) {
+    const content = `
+      <strong>${explanation.name}</strong> - ${explanation.degree}<br/>
+      <span style="color: #cbd5e1; font-size: 11px;">
+        ${explanation.interval}
+      </span>
+      ${explanation.has_accidental ? `
+        <br/><span style="color: #fbbf24;">
+          ⚠️ ${explanation.accidental_reason}
+        </span>
+      ` : ""}
+    `;
+    
+    this.tooltip.innerHTML = content;
+    
+    // Position tooltip near cursor
+    let top = y + 10;
+    let left = x + 10;
+    
+    // Adjust if goes off screen
+    const tooltipWidth = 300;
+    if (left + tooltipWidth > window.innerWidth) {
+      left = window.innerWidth - tooltipWidth - 10;
+    }
+    
+    this.tooltip.style.left = left + "px";
+    this.tooltip.style.top = top + "px";
+    this.tooltip.style.opacity = "1";
+  },
+
+  hideTooltip() {
+    if (this.tooltip) {
+      this.tooltip.style.opacity = "0";
     }
   }
 }

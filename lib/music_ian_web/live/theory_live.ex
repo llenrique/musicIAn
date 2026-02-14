@@ -38,6 +38,8 @@ defmodule MusicIanWeb.TheoryLive do
       |> assign(:tempo, 60)
       |> assign(:detected_bpm, nil)
       |> assign(:held_notes, MapSet.new())
+      # Maps midi -> timestamp when note was pressed
+      |> assign(:note_timings, %{})
       # MCP Analysis
       |> assign(:detected_chord, nil)
       |> assign(:scale_info_enriched, nil)
@@ -51,6 +53,7 @@ defmodule MusicIanWeb.TheoryLive do
       |> assign(:lesson_phase, nil)
       |> assign(:lesson_feedback, nil)
       |> assign(:lesson_stats, %{correct: 0, errors: 0})
+      |> assign(:countdown, 0)
       |> update_active_notes()
 
     {:ok, socket}
@@ -190,15 +193,24 @@ defmodule MusicIanWeb.TheoryLive do
 
   def handle_event("stop_demo", _, socket) do
     if socket.assigns.lesson_active do
-      # Update both the socket phase AND the lesson_state phase
-      new_state = %{socket.assigns.lesson_state | phase: :active}
+      # Use start_practice to properly reset step_index and stats
+      new_state = MusicIan.Practice.LessonEngine.start_practice(socket.assigns.lesson_state)
+      steps = socket.assigns.current_lesson.steps
+      tempo = socket.assigns.tempo
 
       {:noreply,
        socket
        # Go back to active practice
        |> assign(:lesson_phase, :active)
        |> assign(:lesson_state, new_state)
-       |> push_event("stop_demo_sequence", %{})}
+       |> assign(:current_step_index, 0)
+       |> assign(:lesson_stats, %{correct: 0, errors: 0})
+       |> push_event("stop_demo_sequence", %{})
+       |> push_event("lesson_started", %{
+         steps: steps,
+         tempo: tempo,
+         metronome_active: true
+       })}
     else
       {:noreply, socket}
     end
@@ -210,13 +222,22 @@ defmodule MusicIanWeb.TheoryLive do
 
   def handle_event("demo_finished", _, socket) do
     if socket.assigns.lesson_active do
-      # Update both the socket phase AND the lesson_state phase
-      new_state = %{socket.assigns.lesson_state | phase: :active}
+      # Use start_practice to properly reset step_index and stats
+      new_state = MusicIan.Practice.LessonEngine.start_practice(socket.assigns.lesson_state)
+      steps = socket.assigns.current_lesson.steps
+      tempo = socket.assigns.tempo
 
       {:noreply,
        socket
        |> assign(:lesson_phase, :active)
-       |> assign(:lesson_state, new_state)}
+       |> assign(:lesson_state, new_state)
+       |> assign(:current_step_index, 0)
+       |> assign(:lesson_stats, %{correct: 0, errors: 0})
+       |> push_event("lesson_started", %{
+         steps: steps,
+         tempo: tempo,
+         metronome_active: true
+       })}
     else
       {:noreply, socket}
     end
@@ -229,18 +250,14 @@ defmodule MusicIanWeb.TheoryLive do
     if socket.assigns.lesson_active do
       new_state = MusicIan.Practice.LessonEngine.start_practice(socket.assigns.lesson_state)
 
-      # === NEW: Send lesson steps to client for beat-based validation ===
-      steps = socket.assigns.current_lesson.steps
-      tempo = socket.assigns.tempo
-
       socket =
         socket
+        |> assign(:lesson_phase, :countdown)
+        |> assign(:countdown, 10)
         |> assign_lesson_state(new_state)
-        |> push_event("lesson_started", %{
-          steps: steps,
-          tempo: tempo,
-          metronome_active: true
-        })
+
+      # Start countdown timer
+      Process.send_after(self(), :countdown_tick, 1000)
 
       {:noreply, socket}
     else
@@ -534,6 +551,32 @@ defmodule MusicIanWeb.TheoryLive do
 
   # Removed validate_lesson_step as it is now replaced by LessonEngine logic
 
+  # === COUNTDOWN TIMER FOR PRACTICE START ===
+  def handle_info(:countdown_tick, socket) do
+    countdown = socket.assigns[:countdown] || 0
+
+    if countdown > 1 do
+      # Continue countdown
+      Process.send_after(self(), :countdown_tick, 1000)
+
+      {:noreply, assign(socket, :countdown, countdown - 1)}
+    else
+      # Countdown finished - start practice
+      steps = socket.assigns.current_lesson.steps
+      tempo = socket.assigns.tempo
+
+      {:noreply,
+       socket
+       |> assign(:lesson_phase, :active)
+       |> assign(:countdown, 0)
+       |> push_event("lesson_started", %{
+         steps: steps,
+         tempo: tempo,
+         metronome_active: true
+       })}
+    end
+  end
+
   defp update_active_notes(socket) do
     if socket.assigns.lesson_active do
       # --- LESSON MODE ---
@@ -714,14 +757,15 @@ defmodule MusicIanWeb.TheoryLive do
       theory_context =
         MusicIan.MusicCore.Theory.analyze_context(root, type, scale_right.notes, use_flats)
 
-      socket
-      |> assign(:active_notes, active_midis)
-      |> assign(:vexflow_notes, vexflow_notes)
-      |> assign(:vexflow_key, vexflow_key)
-      |> assign(:scale_info, %{description: scale_right.description, mood: scale_right.mood})
-      |> assign(:suggested_keys, scale_right.suggested_keys)
-      |> assign(:suggestion_reason, scale_right.suggestion_reason)
-      |> assign(:theory_context, theory_context)
+       socket
+       |> assign(:active_notes, active_midis)
+       |> assign(:vexflow_notes, vexflow_notes)
+       |> assign(:vexflow_key, vexflow_key)
+       |> assign(:scale_info, %{description: scale_right.description, mood: scale_right.mood})
+       |> assign(:suggested_keys, scale_right.suggested_keys)
+       |> assign(:suggestion_reason, scale_right.suggestion_reason)
+       |> assign(:theory_context, theory_context)
+       |> assign(:note_explanations, scale_right.note_explanations)
     end
   end
 
@@ -1033,6 +1077,19 @@ defmodule MusicIanWeb.TheoryLive do
           </div>
         <% end %>
         
+    <!-- Countdown Timer Modal -->
+        <%= if @lesson_active && @lesson_phase == :countdown do %>
+          <div class="absolute inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center">
+            <div class="bg-white rounded-2xl shadow-2xl p-12 max-w-md w-full text-center">
+              <p class="text-slate-600 text-lg mb-4">¡Prepárate! La práctica comenzará en:</p>
+              <div class="text-8xl font-black text-emerald-600 mb-4 animate-pulse">
+                {@countdown}
+              </div>
+              <p class="text-slate-500 text-sm">Síncronízate con el metronoma</p>
+            </div>
+          </div>
+        <% end %>
+        
     <!-- Lesson Overlay (Floating) - MOVED BELOW KEYBOARD -->
 
 
@@ -1145,13 +1202,14 @@ defmodule MusicIanWeb.TheoryLive do
           
     <!-- CENTER: Visualization (50%) -->
           <div class="col-span-12 lg:col-span-7 flex flex-col gap-4 h-full">
-            <div class="h-2/5">
+             <div class="h-2/5">
               <Staff.music_staff
                 vexflow_notes={@vexflow_notes}
                 vexflow_key={@vexflow_key}
                 theory_context={@theory_context}
                 current_step_index={@current_step_index}
                 lesson_active={@lesson_active}
+                note_explanations={@note_explanations || []}
               />
             </div>
             <div class="h-3/5 flex flex-col gap-4">

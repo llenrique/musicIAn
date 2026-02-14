@@ -45,6 +45,67 @@ defmodule MusicIan.MusicCore.ScaleTest do
       
       assert actual_midis == expected_midis
     end
+
+    test "generates D Major scale with correct sharps (F# and C#)" do
+      # D4 is 62
+      scale = Scale.new(62, :major)
+      
+      # D Major should have F# (MIDI 66) and C# (MIDI 73)
+      # D Major: D, E, F#, G, A, B, C#
+      # Intervals: 0, 2, 4, 5, 7, 9, 11
+      # MIDI: 62, 64, 66, 67, 69, 71, 73
+      expected_midis = [62, 64, 66, 67, 69, 71, 73]
+      actual_midis = Enum.map(scale.notes, & &1.midi)
+      
+      assert actual_midis == expected_midis
+      
+      # Check note names - should use sharps for D Major
+      note_names = Enum.map(scale.notes, & &1.name)
+      assert note_names == ~w(D E F# G A B C#)
+      
+      # Check that explanations are generated
+      assert scale.note_explanations != nil
+      assert length(scale.note_explanations) == 7
+      
+      # Check F# has explanation
+      f_sharp_explanation = Enum.at(scale.note_explanations, 2)
+      assert f_sharp_explanation.has_accidental == true
+      assert f_sharp_explanation.name == "F#"
+    end
+
+    test "generates G Major scale with F#" do
+      # G4 is 67
+      scale = Scale.new(67, :major)
+      
+      # G Major: G, A, B, C, D, E, F#
+      # Intervals: 0, 2, 4, 5, 7, 9, 11
+      # MIDI: 67, 69, 71, 72, 74, 76, 78
+      expected_midis = [67, 69, 71, 72, 74, 76, 78]
+      actual_midis = Enum.map(scale.notes, & &1.midi)
+      
+      assert actual_midis == expected_midis
+      
+      # Check note names - F should be F#
+      note_names = Enum.map(scale.notes, & &1.name)
+      assert note_names == ~w(G A B C D E F#)
+    end
+
+    test "generates F Major scale with Bb" do
+      # F4 is 65
+      scale = Scale.new(65, :major)
+      
+      # F Major: F, G, A, Bb, C, D, E
+      # Intervals: 0, 2, 4, 5, 7, 9, 11
+      # MIDI: 65, 67, 69, 70, 72, 74, 76
+      expected_midis = [65, 67, 69, 70, 72, 74, 76]
+      actual_midis = Enum.map(scale.notes, & &1.midi)
+      
+      assert actual_midis == expected_midis
+      
+      # Check note names - B should be Bb
+      note_names = Enum.map(scale.notes, & &1.name)
+      assert note_names == ~w(F G A Bb C D E)
+    end
   end
 
   describe "diatonic_triads/1" do
