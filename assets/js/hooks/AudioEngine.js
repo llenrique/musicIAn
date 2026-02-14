@@ -1,10 +1,11 @@
 const AudioEngine = {
   mounted() {
-    // Visual-only engine now
+    // === NEW: Track held notes client-side to prevent stuck notes ===
+    this.heldNotes = new Set();
     
     this.handleEvent("play_note", ({ midi, duration }) => {
-      this.highlightKey(midi, true);
-      setTimeout(() => this.highlightKey(midi, false), (duration || 0.5) * 1000);
+      this.setKeyPressed(midi, true);
+      setTimeout(() => this.setKeyPressed(midi, false), (duration || 0.5) * 1000);
     });
 
     // Listen for local MIDI events (Optimistic UI)
@@ -13,14 +14,35 @@ const AudioEngine = {
       
       if (isOn === undefined) {
         // Fallback for legacy calls
-        this.highlightKey(midi, true);
-        setTimeout(() => this.highlightKey(midi, false), 200);
-      } else if (isOn) {
-        this.highlightKey(midi, true);
+        this.setKeyPressed(midi, true);
+        setTimeout(() => this.setKeyPressed(midi, false), 200);
       } else {
-        this.highlightKey(midi, false);
+        // === NEW: Use the new tracking method ===
+        this.setKeyPressed(midi, isOn);
       }
     });
+  },
+  
+  destroyed() {
+    // Clean up when hook is destroyed
+    this.heldNotes = new Set();
+  },
+  
+  /**
+   * === NEW: Set key pressed state with proper tracking ===
+   * Mirrors the server-side MapSet behavior
+   */
+  setKeyPressed(midi, isOn) {
+    if (isOn) {
+      this.heldNotes.add(midi);
+      this.highlightKey(midi, true);
+    } else {
+      this.heldNotes.delete(midi);
+      // Only highlight off if this note is no longer in our held set
+      if (!this.heldNotes.has(midi)) {
+        this.highlightKey(midi, false);
+      }
+    }
   },
   
   highlightKey(midi, isOn) {
