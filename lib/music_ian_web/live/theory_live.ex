@@ -422,30 +422,34 @@ defmodule MusicIanWeb.TheoryLive do
                midi,
                timing_info
              ) do
-          {:continue, new_state} ->
-            {:noreply,
-             socket
-             |> assign(:current_step_index, new_state.step_index)
-             |> assign(:lesson_stats, new_state.stats)
-             |> assign(:lesson_feedback, new_state.feedback)
-             # IMPORTANT: Update internal state
-             |> assign(:lesson_state, new_state)}
+           {:continue, new_state} ->
+             # === FIX: Clear held_notes when step advances (user must release keys for next step) ===
+             {:noreply,
+              socket
+              |> assign(:current_step_index, new_state.step_index)
+              |> assign(:lesson_stats, new_state.stats)
+              |> assign(:lesson_feedback, new_state.feedback)
+              |> assign(:held_notes, MapSet.new())
+              # IMPORTANT: Update internal state
+              |> assign(:lesson_state, new_state)}
 
-          {:completed, new_state} ->
-            # Side Effect: Save to DB (UI Layer Responsibility)
-            MusicIan.Practice.Helper.LessonHelper.save_lesson_completion(
-              new_state.lesson_id,
-              new_state.stats
-            )
+           {:completed, new_state} ->
+             # Side Effect: Save to DB (UI Layer Responsibility)
+             MusicIan.Practice.Helper.LessonHelper.save_lesson_completion(
+               new_state.lesson_id,
+               new_state.stats
+             )
 
-            {:noreply,
-             socket
-             |> assign(:lesson_phase, :summary)
-             |> assign(:current_step_index, new_state.step_index)
-             |> assign(:lesson_stats, new_state.stats)
-             |> assign(:lesson_feedback, new_state.feedback)
-             # IMPORTANT: Update internal state
-             |> assign(:lesson_state, new_state)}
+             # === FIX: Clear held_notes when lesson completes ===
+             {:noreply,
+              socket
+              |> assign(:lesson_phase, :summary)
+              |> assign(:current_step_index, new_state.step_index)
+              |> assign(:lesson_stats, new_state.stats)
+              |> assign(:lesson_feedback, new_state.feedback)
+              |> assign(:held_notes, MapSet.new())
+              # IMPORTANT: Update internal state
+              |> assign(:lesson_state, new_state)}
 
           {:error, new_state} ->
             {:noreply,
