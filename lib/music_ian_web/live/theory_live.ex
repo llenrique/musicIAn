@@ -247,16 +247,16 @@ defmodule MusicIanWeb.TheoryLive do
     if socket.assigns.lesson_active do
       new_state = MusicIan.Practice.LessonEngine.start_practice(socket.assigns.lesson_state)
 
-      socket =
-        socket
-        |> assign(:lesson_phase, :countdown)
-        |> assign(:countdown, 10)
-        |> assign_lesson_state(new_state)
-
-      # Start countdown timer
+      # === FIX: Start with extended preparation time ===
+      # countdown = 13 (10 sec "Preparado..." + 3 sec "3,2,1")
       Process.send_after(self(), :countdown_tick, 1000)
-
-      {:noreply, socket}
+      
+      {:noreply,
+       socket
+       |> assign(:lesson_phase, :countdown)
+       |> assign(:countdown, 13)
+       |> assign(:countdown_stage, :prepare)
+       |> assign(:lesson_state, new_state)}
     else
       {:noreply, socket}
     end
@@ -555,26 +555,40 @@ defmodule MusicIanWeb.TheoryLive do
   # === COUNTDOWN TIMER FOR PRACTICE START ===
   def handle_info(:countdown_tick, socket) do
     countdown = socket.assigns[:countdown] || 0
+    countdown_stage = socket.assigns[:countdown_stage] || :prepare
 
-    if countdown > 1 do
-      # Continue countdown
+    if countdown > 4 do
+      # === STAGE 1: "Preparado..." (Adaptation phase) ===
+      # First 10 seconds are for the student to adapt to the metronome
       Process.send_after(self(), :countdown_tick, 1000)
-
-      {:noreply, assign(socket, :countdown, countdown - 1)}
-    else
-      # Countdown finished - start practice
-      steps = socket.assigns.current_lesson.steps
-      tempo = socket.assigns.tempo
-
-      {:noreply,
+      {:noreply, 
        socket
-       |> assign(:lesson_phase, :active)
-       |> assign(:countdown, 0)
-       |> push_event("lesson_started", %{
-         steps: steps,
-         tempo: tempo,
-         metronome_active: true
-       })}
+       |> assign(:countdown, countdown - 1)
+       |> assign(:countdown_stage, :prepare)}
+    else
+      if countdown > 1 do
+        # === STAGE 2: "3, 2, 1" (Final countdown) ===
+        Process.send_after(self(), :countdown_tick, 1000)
+        {:noreply, 
+         socket
+         |> assign(:countdown, countdown - 1)
+         |> assign(:countdown_stage, :final)}
+      else
+        # === Countdown finished - start practice ===
+        steps = socket.assigns.current_lesson.steps
+        tempo = socket.assigns.tempo
+
+        {:noreply,
+         socket
+         |> assign(:lesson_phase, :active)
+         |> assign(:countdown, 0)
+         |> assign(:countdown_stage, nil)
+         |> push_event("lesson_started", %{
+           steps: steps,
+           tempo: tempo,
+           metronome_active: true
+         })}
+      end
     end
   end
 
@@ -1078,18 +1092,35 @@ defmodule MusicIanWeb.TheoryLive do
           </div>
         <% end %>
         
-    <!-- Countdown Timer Modal -->
-        <%= if @lesson_active && @lesson_phase == :countdown do %>
-          <div class="absolute inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center">
-            <div class="bg-white rounded-2xl shadow-2xl p-12 max-w-md w-full text-center">
-              <p class="text-slate-600 text-lg mb-4">¡Prepárate! La práctica comenzará en:</p>
-              <div class="text-8xl font-black text-emerald-600 mb-4 animate-pulse">
-                {@countdown}
-              </div>
-              <p class="text-slate-500 text-sm">Síncronízate con el metronoma</p>
-            </div>
-          </div>
-         <% end %>
+     <!-- Countdown Timer Modal -->
+         <%= if @lesson_active && @lesson_phase == :countdown do %>
+           <% 
+             # Adjust countdown display: 13-11 = "Preparado...", 10-4 = final countdown
+             display_countdown = max(0, @countdown - 10)
+             show_prepare = @countdown_stage == :prepare
+             show_final = @countdown_stage == :final
+           %>
+           <div class="absolute inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center">
+             <div class="bg-white rounded-2xl shadow-2xl p-12 max-w-md w-full text-center">
+               <%= if show_prepare do %>
+                 <!-- Adaptation phase -->
+                 <p class="text-slate-600 text-2xl mb-4 font-bold">Preparado...</p>
+                 <p class="text-slate-500 text-base mb-4">
+                   Escucha el metrónomo y adapta tu ritmo
+                 </p>
+                 <div class="text-lg text-slate-400 mb-4">
+                   Iniciando en {13 - @countdown} segundos
+                 </div>
+               <% else %>
+                 <!-- Final countdown 3, 2, 1 -->
+                 <p class="text-slate-600 text-xl mb-4">¡Comenzando!</p>
+                 <div class="text-9xl font-black text-red-600 animate-pulse">
+                   {display_countdown}
+                 </div>
+               <% end %>
+             </div>
+           </div>
+          <% end %>
          
      <!-- Post-Demo Confirmation Modal -->
          <%= if @lesson_active && @lesson_phase == :post_demo do %>
