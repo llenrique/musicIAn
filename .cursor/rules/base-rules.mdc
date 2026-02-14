@@ -1,0 +1,19 @@
+---
+description: Reglas generales de comportamiento y contexto del proyecto musicIAn
+globs: "*"
+alwaysApply: true
+---
+
+# Proyecto: musicIAn
+
+## Comportamiento del Agente
+- **Idioma**: Responder siempre en Español.
+- **Concisión**: Ser directo y conciso. Evitar verbosidad innecesaria para ahorrar tokens.
+- **Pensamiento**: Razonar paso a paso antes de ejecutar cambios complejos.
+- **Contexto**: Consultar `AGENTS.md` para entender el estado actual y decisiones del proyecto si es necesario.
+
+## Estándares Generales
+- Seguir principios SOLID y DRY.
+- Preferir código limpio y autodocumentado.
+- Manejo de errores explícito.
+- No dejar "TODOs" sin planificar su implementación.

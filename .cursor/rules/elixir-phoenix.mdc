@@ -1,0 +1,34 @@
+---
+description: Reglas para desarrollo en Elixir, Phoenix y LiveView
+globs: "**/*.{ex,exs,heex,eex}"
+alwaysApply: true
+---
+
+# Elixir & Phoenix Best Practices
+
+## Estilo y Convenciones
+- Usar **snake_case** para nombres de archivos y funciones.
+- Usar **CamelCase** para nombres de Módulos.
+- Preferir `pattern matching` en argumentos de función sobre `if/else` o `case` dentro del cuerpo.
+- Usar `|>` (pipe operator) para encadenar transformaciones de datos.
+
+## Phoenix & LiveView
+- **Contextos**: Toda la lógica de negocio debe residir en Contextos (carpetas en `lib/music_ian/`), NO en los Controladores ni en las LiveViews.
+- **LiveView**:
+  - Usar componentes funcionales (`.heex`) para UI reutilizable.
+  - Mantener el estado (`socket.assigns`) mínimo necesario.
+  - Usar `JS Hooks` para integración con Web APIs (como Web MIDI).
+- **HTML**: Usar clases de Tailwind CSS.
+
+## Documentación y Tipado
+- Agregar `@moduledoc` y `@doc` en español explicando el "por qué" de la lógica.
+- Usar `@spec` para definir tipos en funciones públicas críticas, especialmente en `MusicCore`.
+
+## Testing
+- Escribir tests unitarios para `MusicCore` antes o durante la implementación.
+- Usar `Mox` para mocks si es necesario interactuar con servicios externos.
+
+## Estructura de Proyecto (musicIAn)
+- `lib/music_ian/music_core/`: Lógica de teoría musical pura.
+- `lib/music_ian/practice/`: Schemas y lógica de base de datos para progreso.
+- `lib/music_ian/instructor/`: Lógica de análisis y generación de ejercicios.
