@@ -68,6 +68,8 @@ defmodule MusicIanWeb.TheoryLive do
     |> assign(:lesson_phase, nil)
     |> assign(:lesson_feedback, nil)
     |> assign(:lesson_stats, %{correct: 0, errors: 0})
+    # === FIX: Clear held_notes when lesson ends ===
+    |> assign(:held_notes, MapSet.new())
     |> assign(:metronome_active, false)
     |> push_event("toggle_metronome", %{active: false, bpm: socket.assigns.tempo})
     |> update_active_notes()
@@ -87,6 +89,8 @@ defmodule MusicIanWeb.TheoryLive do
       |> assign(:lesson_phase, state.phase)
       |> assign(:lesson_feedback, state.feedback)
       |> assign(:lesson_stats, state.stats)
+      # === FIX: Clear held_notes when lesson changes to prevent validation errors ===
+      |> assign(:held_notes, MapSet.new())
       |> update_active_notes()
 
     if lesson_changed do
