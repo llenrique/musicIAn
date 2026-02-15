@@ -92,6 +92,10 @@ defmodule MusicIanWeb.TheoryLive do
 
    # === NEW FSM-based assignment ===
    defp assign_fsm_state(socket, %MusicIan.Practice.FSM.LessonFSM{} = fsm) do
+     IO.puts("🔧 ASSIGN_FSM_STATE:")
+     IO.puts("   lesson_id: #{fsm.lesson_id}")
+     IO.puts("   current_state: #{fsm.current_state}")
+     IO.puts("   current_lesson: #{fsm.lesson.title}")
      socket
      |> assign(:lesson_active, true)
      |> assign(:lesson_state, fsm)
@@ -160,15 +164,19 @@ defmodule MusicIanWeb.TheoryLive do
 
   def handle_event("start_lesson", %{"id" => lesson_id}, socket) do
     # === FSM: Load new lesson in :intro phase ===
+    IO.puts("📚 START_LESSON: lesson_id=#{lesson_id}")
     case MusicIan.Practice.FSM.LessonFSM.new(lesson_id) do
       {:ok, fsm_state} ->
+        IO.puts("✅ FSM created successfully for #{lesson_id}")
+        IO.puts("   FSM state: current_state=#{fsm_state.current_state}, lesson=#{fsm_state.lesson.title}")
         {:noreply,
          socket
          |> assign(:show_lessons_menu, false)
          |> assign(:show_help, false)
          |> assign_fsm_state(fsm_state)}
 
-      {:error, _} ->
+      {:error, reason} ->
+        IO.puts("❌ Failed to create FSM: #{inspect(reason)}")
         {:noreply, put_flash(socket, :error, "Lección no encontrada")}
     end
   end
