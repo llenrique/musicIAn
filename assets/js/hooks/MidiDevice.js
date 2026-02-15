@@ -207,8 +207,7 @@ const MidiDevice = {
           }
         }
       };
-      // Listen on the element itself (bubbling) AND window (just in case)
-      this.el.addEventListener("local-midi-note", this.localNoteListener);
+      // Listen on window only to avoid duplicate events
       window.addEventListener("local-midi-note", this.localNoteListener);
     }
 
