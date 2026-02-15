@@ -77,8 +77,10 @@ defmodule MusicIanWeb.TheoryLive do
 
    defp assign_lesson_state(socket, %MusicIan.Practice.LessonEngine{} = state) do
      # === FIX: Do NOT start metronome when lesson is loaded ===
-     # Metrónomo only starts when user clicks "begin_practice" and countdown completes
+     # Metrónomo only starts when user clicks "begin_practice"
      # This prevents metrónomo from playing in the lesson selection modal
+     # IMPORTANT: Do NOT send push_event here - only update internal state
+     # Events sent here interfere with begin_practice timing
      socket =
        socket
        |> assign(:lesson_active, true)
@@ -90,9 +92,9 @@ defmodule MusicIanWeb.TheoryLive do
        |> assign(:lesson_stats, state.stats)
        # === FIX: Clear held_notes when lesson changes to prevent validation errors ===
        |> assign(:held_notes, MapSet.new())
-       # === FIX: Ensure metronome is OFF until practice begins ===
+       # === FIX: Ensure metronome is OFF internally until practice begins ===
+       # But DO NOT push_event here - let begin_practice handle it
        |> assign(:metronome_active, false)
-       |> push_event("toggle_metronome", %{active: false, bpm: socket.assigns.tempo})
        |> update_active_notes()
 
      socket
