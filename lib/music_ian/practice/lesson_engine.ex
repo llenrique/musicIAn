@@ -232,40 +232,33 @@ defmodule MusicIan.Practice.LessonEngine do
      # Check for extra notes (strict mode: no extra notes allowed)
      has_extra_notes = not MapSet.equal?(target_set, held_set)
 
-     if all_target_notes_held and not has_extra_notes do
-       # ✅ Perfect: All required notes, no extra notes
-       handle_success(state, timing_info)
-     else
-       # ❌ Error conditions:
-       # 1. Latest note is not in target set
-       # 2. Extra notes are being held (strict validation)
-       
-       if not MapSet.member?(target_set, latest_note) do
-         # Wrong note played
-         handle_error(state, latest_note, target_notes, timing_info)
-       else
-         if has_extra_notes do
-           # Extra notes held (user building chord messily)
-           # Only error if extra notes are WAY off (more than 2 semitones away)
-           extra_notes = MapSet.difference(held_set, target_set)
-           
-           wrong_extra = Enum.any?(extra_notes, fn note -> 
-             # Check if extra note is at least 2 semitones away from any target note
-             Enum.all?(target_notes, fn target -> abs(note - target) > 1 end)
-           end)
-           
-           if wrong_extra do
-             handle_error(state, latest_note, target_notes, timing_info)
-           else
-             # Extra notes are close/adjacent - user building slowly. Wait.
-             {:ignore, state}
-           end
-         else
-           # It's a correct note, but the chord is incomplete. Wait.
-           {:ignore, state}
-         end
-       end
-     end
+      if all_target_notes_held and not has_extra_notes do
+        # ✅ Perfect: All required notes, no extra notes
+        handle_success(state, timing_info)
+      else
+        # ❌ Error conditions:
+        # 1. Latest note is not in target set (wrong note)
+        # 2. Not all target notes are held yet (incomplete chord)
+        # 3. Extra notes are being held (strict validation for multi-hand lessons)
+        
+        if not MapSet.member?(target_set, latest_note) do
+          # Wrong note played - error!
+          handle_error(state, latest_note, target_notes, timing_info)
+        else if not all_target_notes_held do
+          # All held notes are correct, but chord is incomplete. Wait for more.
+          {:ignore, state}
+        else if has_extra_notes do
+          # Extra notes held along with all required notes.
+          # For multi-hand lessons, ANY extra note should be an error.
+          # REASON: User might be holding a note from previous step + accidentally hitting wrong key
+          handle_error(state, latest_note, target_notes, timing_info)
+        else
+          # This shouldn't happen (all checks pass but condition failed?)
+          {:ignore, state}
+        end
+        end
+        end
+      end
   end
 
   # Catch-all for inactive phases (ignore validation when not in :active phase)
