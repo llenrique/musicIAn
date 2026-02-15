@@ -195,18 +195,18 @@ const MidiDevice = {
     // We listen on the hook element (container) to catch bubbled events
     if (!this.localNoteListener) {
       this.localNoteListener = (e) => {
-        const { midi, velocity, isOn, source } = e.detail;
-        console.log("🎹 Local Note Event (MidiDevice):", midi, isOn ? "ON" : "OFF", source);
-        
-        // Only send MIDI OUT if the source is NOT "midi-in" (to avoid loops)
-        if (source !== "midi-in") {
-          if (isOn) {
-            this.sendNoteOn(midi, velocity || 100);
-          } else {
-            this.sendNoteOff(midi);
-          }
-        }
-      };
+         const { midi, velocity, isOn, source } = e.detail;
+         console.log("🎹 Local Note Event (MidiDevice):", midi, isOn ? "ON" : "OFF", source);
+         
+         // Only send MIDI OUT if the source is NOT "midi-in" or "demo-player" (to avoid loops)
+         if (source !== "midi-in" && source !== "demo-player") {
+           if (isOn) {
+             this.sendNoteOn(midi, velocity || 100);
+           } else {
+             this.sendNoteOff(midi);
+           }
+         }
+       };
       // Listen on window only to avoid duplicate events
       window.addEventListener("local-midi-note", this.localNoteListener);
     }
