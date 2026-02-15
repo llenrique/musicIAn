@@ -118,13 +118,23 @@ defmodule MusicIanWeb.TheoryLive do
     {:noreply, assign(socket, :virtual_velocity, String.to_integer(velocity))}
   end
 
-  def handle_event("toggle_metronome", _, socket) do
-    active = !socket.assigns.metronome_active
-    socket = assign(socket, :metronome_active, active)
+   def handle_event("toggle_metronome", _, socket) do
+     # === GUARD: Only allow metronome toggle during active practice ===
+     # During countdown or demo, metronome state is controlled by system
+     lesson_phase = socket.assigns.lesson_phase
+     
+     if lesson_phase in [:countdown, :demo] do
+       # Ignore user toggle during countdown or demo
+       {:noreply, socket}
+     else
+       # Allow toggle only during practice or exploration mode
+       active = !socket.assigns.metronome_active
+       socket = assign(socket, :metronome_active, active)
 
-    {:noreply,
-     push_event(socket, "toggle_metronome", %{active: active, bpm: socket.assigns.tempo})}
-  end
+       {:noreply,
+        push_event(socket, "toggle_metronome", %{active: active, bpm: socket.assigns.tempo})}
+     end
+   end
 
   def handle_event("set_tempo", %{"bpm" => bpm}, socket) do
     bpm = String.to_integer(bpm)
@@ -198,35 +208,22 @@ defmodule MusicIanWeb.TheoryLive do
     end
   end
 
-   def handle_event("stop_demo", _, socket) do
-     if socket.assigns.lesson_active do
-       # Use start_practice to properly reset step_index and stats
-       new_state = MusicIan.Practice.LessonEngine.start_practice(socket.assigns.lesson_state)
-       steps = socket.assigns.current_lesson.steps
-       tempo = socket.assigns.tempo
-       
-       # === FIX: Check if lesson has metronome enabled ===
-       lesson = socket.assigns.current_lesson
-       metronome_enabled = Map.get(lesson, :metronome, false)
-
-       {:noreply,
-        socket
-        # Go back to active practice
-        |> assign(:lesson_phase, :active)
-        |> assign(:lesson_state, new_state)
-        |> assign(:current_step_index, 0)
-        |> assign(:lesson_stats, %{correct: 0, errors: 0})
-        |> assign(:metronome_active, metronome_enabled)
-        |> push_event("stop_demo_sequence", %{})
-        |> push_event("lesson_started", %{
-          steps: steps,
-          tempo: tempo,
-          metronome_active: metronome_enabled
-        })}
-     else
-       {:noreply, socket}
-     end
-   end
+    def handle_event("stop_demo", _, socket) do
+      if socket.assigns.lesson_active do
+        # === SIMPLIFIED: Just stop demo, show post-demo modal ===
+        # User can then choose to repeat demo or start practice
+        {:noreply,
+         socket
+         |> assign(:lesson_phase, :post_demo)
+         |> assign(:lesson_feedback, %{
+           status: :info,
+           message: "Demo completado. ¿Repetir o comenzar a practicar?"
+         })
+         |> push_event("stop_demo_sequence", %{})}
+      else
+        {:noreply, socket}
+      end
+    end
 
   def handle_event("demo_step_update", %{"step_index" => index}, socket) do
     {:noreply, assign(socket, :current_step_index, index)}
@@ -253,36 +250,33 @@ defmodule MusicIanWeb.TheoryLive do
 
    def handle_event("begin_practice", _, socket) do
      if socket.assigns.lesson_active do
-       new_state = MusicIan.Practice.LessonEngine.start_practice(socket.assigns.lesson_state)
-
-       # === FIX: Check if lesson has metronome enabled ===
+       # === SIMPLIFIED: Begin practice with countdown ===
        lesson = socket.assigns.current_lesson
        metronome_enabled = Map.get(lesson, :metronome, false)
 
-       # === FIX: Start countdown 10 seconds ===
-       # Metronome activates immediately if lesson has it
-       # Countdown: 10, 9, 8, 7, 6, 5, 4, then "Listo, Set, ¡Vamos!" for 3, 2, 1
+       # Reset lesson state for practice
+       new_state = MusicIan.Practice.LessonEngine.start_practice(socket.assigns.lesson_state)
+
+       # Start countdown (10 seconds)
        Process.send_after(self(), :countdown_tick, 1000)
-       
-       socket_updated =
-         socket
-         |> assign(:lesson_phase, :countdown)
-         |> assign(:countdown, 10)
-         |> assign(:countdown_stage, :counting)
-         |> assign(:lesson_state, new_state)
-       
-       # === ACTIVATE METRONOME NOW if lesson has it ===
-       socket_updated =
+
+       # Activate metronome immediately if lesson has it
+       socket_with_metronome =
          if metronome_enabled do
-           socket_updated
+           socket
            |> assign(:metronome_active, true)
-           |> push_event("toggle_metronome", %{active: true, bpm: socket_updated.assigns.tempo})
+           |> push_event("toggle_metronome", %{active: true, bpm: socket.assigns.tempo})
          else
-           socket_updated
+           socket
            |> assign(:metronome_active, false)
          end
-       
-       {:noreply, socket_updated}
+
+       {:noreply,
+        socket_with_metronome
+        |> assign(:lesson_phase, :countdown)
+        |> assign(:countdown, 10)
+        |> assign(:countdown_stage, :counting)
+        |> assign(:lesson_state, new_state)}
      else
        {:noreply, socket}
      end
