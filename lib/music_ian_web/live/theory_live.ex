@@ -550,25 +550,25 @@ defmodule MusicIanWeb.TheoryLive do
     state = socket.assigns.lesson_state
 
     # Global C8 action when no lesson is active
-    if !socket.assigns.lesson_active do
-      # Start first lesson dynamically
-      first_lesson = List.first(MusicIan.Curriculum.list_lessons())
+     if !socket.assigns.lesson_active do
+       # Start first lesson dynamically
+       first_lesson = List.first(MusicIan.Curriculum.list_lessons())
 
-      if first_lesson do
-        case MusicIan.Practice.FSM.LessonFSM.new(first_lesson.id) do
-          {:ok, fsm_state} ->
-            {:noreply,
-             socket
-             |> assign(:show_lessons_menu, false)
-             |> assign(:show_help, false)
-             |> assign(:lesson_state, fsm_state)}
+       if first_lesson do
+         case MusicIan.Practice.FSM.LessonFSM.new(first_lesson.id) do
+           {:ok, fsm_state} ->
+             {:noreply,
+              socket
+              |> assign(:show_lessons_menu, false)
+              |> assign(:show_help, false)
+              |> assign_fsm_state(fsm_state)}
 
-          _ ->
-            {:noreply, socket}
-        end
-      else
-        {:noreply, socket}
-      end
+           _ ->
+             {:noreply, socket}
+         end
+       else
+         {:noreply, socket}
+       end
     else
       # Context-aware actions based on FSM state
       case state.current_state do
@@ -604,35 +604,36 @@ defmodule MusicIanWeb.TheoryLive do
           total = correct + errors
           accuracy = if total > 0, do: correct / total, else: 0.0
 
-          if accuracy >= 0.8 do
-            # Passed -> Next Lesson
-            next_id = MusicIan.Curriculum.get_next_lesson_id(state.lesson_id)
+           if accuracy >= 0.8 do
+             # Passed -> Next Lesson
+             next_id = MusicIan.Curriculum.get_next_lesson_id(state.lesson_id)
 
-            if next_id do
-              case MusicIan.Practice.FSM.LessonFSM.new(next_id) do
-                {:ok, next_fsm} ->
-                  {:noreply, assign(socket, :lesson_state, next_fsm)}
+             if next_id do
+               case MusicIan.Practice.FSM.LessonFSM.new(next_id) do
+                 {:ok, next_fsm} ->
+                   {:noreply, assign_fsm_state(socket, next_fsm)}
 
-                _ ->
-                  {:noreply, socket}
-              end
-            else
-              # Finished course
-              {:noreply,
-               socket
-               |> assign(:lesson_state, nil)
-               |> put_flash(:info, "¡Has completado todo el curso!")}
-            end
-          else
-            # Failed -> Retry: reset to intro for same lesson
-            case MusicIan.Practice.FSM.LessonFSM.new(state.lesson_id) do
-              {:ok, retry_fsm} ->
-                {:noreply, assign(socket, :lesson_state, retry_fsm)}
+                 _ ->
+                   {:noreply, socket}
+               end
+             else
+               # Finished course
+               {:noreply,
+                socket
+                |> assign(:lesson_state, nil)
+                |> assign(:lesson_active, false)
+                |> put_flash(:info, "¡Has completado todo el curso!")}
+             end
+           else
+             # Failed -> Retry: reset to intro for same lesson
+             case MusicIan.Practice.FSM.LessonFSM.new(state.lesson_id) do
+               {:ok, retry_fsm} ->
+                 {:noreply, assign_fsm_state(socket, retry_fsm)}
 
-              _ ->
-                {:noreply, socket}
-            end
-          end
+               _ ->
+                 {:noreply, socket}
+             end
+           end
 
         _ ->
           {:noreply, socket}
