@@ -260,23 +260,16 @@ defmodule MusicIanWeb.TheoryLive do
        # Start countdown (10 seconds)
        Process.send_after(self(), :countdown_tick, 1000)
 
-       # Activate metronome immediately if lesson has it
-       socket_with_metronome =
-         if metronome_enabled do
-           socket
-           |> assign(:metronome_active, true)
-           |> push_event("toggle_metronome", %{active: true, bpm: socket.assigns.tempo})
-         else
-           socket
-           |> assign(:metronome_active, false)
-         end
-
+       # === METRONOME: Activate or deactivate based on lesson config ===
+       # IMPORTANT: Always send push_event to ensure correct state
        {:noreply,
-        socket_with_metronome
+        socket
         |> assign(:lesson_phase, :countdown)
         |> assign(:countdown, 10)
         |> assign(:countdown_stage, :counting)
-        |> assign(:lesson_state, new_state)}
+        |> assign(:metronome_active, metronome_enabled)
+        |> assign(:lesson_state, new_state)
+        |> push_event("toggle_metronome", %{active: metronome_enabled, bpm: socket.assigns.tempo})}
      else
        {:noreply, socket}
      end
