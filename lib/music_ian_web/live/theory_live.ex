@@ -206,7 +206,7 @@ defmodule MusicIanWeb.TheoryLive do
          Enum.with_index(lesson.steps)
          |> Enum.map(fn {step, index} ->
            notes = step[:notes] || [step[:note]]
-           notes = List.wrap(notes) |> Enum.reject(&is_nil/1)
+            notes = List.wrap(notes) |> Enum.reject(&(is_nil(&1) or &1 == 0))
            duration_beats = step[:duration] || 1
 
             %{
