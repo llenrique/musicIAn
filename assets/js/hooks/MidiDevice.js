@@ -56,11 +56,19 @@ const MidiDevice = {
       this.startDemoSequencer(tempo, steps);
     });
 
-    this.handleEvent("stop_demo_sequence", () => {
-      this.stopDemoSequencer();
-    });
+     this.handleEvent("stop_demo_sequence", () => {
+       this.stopDemoSequencer();
+     });
 
-    this.initKeyboard();
+     // === Countdown beep sounds ===
+     this.handleEvent("countdown_tick", ({ countdown, stage }) => {
+       // Only play beep during final countdown (3, 2, 1)
+       if (stage === "final") {
+         this.playCountdownBeep(countdown);
+       }
+     });
+
+     this.initKeyboard();
   },
 
   destroyed() {
@@ -306,26 +314,34 @@ const MidiDevice = {
   },
 
   sendNoteOn(midi, velocity) {
+    console.log(`[sendNoteOn] midi=${midi}, vel=${velocity}, midiAccess=${this.midiAccess ? 'EXISTS' : 'NULL'}`);
+    
     if (!this.midiAccess) {
       console.warn("⚠️ MIDI Output ignored: No MIDI Access. Attempting to initialize...");
       this.initMIDI();
       return;
     }
     
+    const outputCount = this.midiAccess.outputs.size;
+    console.log(`[sendNoteOn] Outputs available: ${outputCount}`);
+    
     let outputsFound = 0;
     for (let output of this.midiAccess.outputs.values()) {
       outputsFound++;
+      console.log(`[sendNoteOn] Sending to output ${outputsFound}/${outputCount}: "${output.name}"`);
       try {
         // Send to Channel 1 (0x90)
-        output.send([0x90, midi, velocity]);
-        console.log(`📤 Demo: Sent Note ON ${midi} (Vel ${velocity})`);
+        const message = [0x90, midi, velocity];
+        console.log(`[sendNoteOn] Message bytes: [${message.join(', ')}]`);
+        output.send(message);
+        console.log(`✅ Sent Note ON ${midi} (Vel ${velocity}) to ${output.name}`);
       } catch (e) {
-        console.error("Error sending MIDI Note On:", e);
+        console.error("❌ Error sending MIDI Note On:", e);
       }
     }
     
     if (outputsFound === 0) {
-      console.warn("⚠️ No MIDI Output devices found.");
+      console.warn("⚠️ No MIDI Output devices found in loop.");
     }
   },
 
@@ -859,6 +875,31 @@ const MidiDevice = {
         }, 50);
       } catch (e) {
         console.error("Error sending Metronome click:", e);
+      }
+    }
+  },
+
+  playCountdownBeep(countdown) {
+    // Play a distinct beep for countdown (3, 2, 1)
+    // Higher pitch than metronome click
+    if (!this.midiAccess) return;
+
+    const channel = 0xF; // Channel 16 (0-indexed)
+    const note = 96; // C7 (Very high pitch, distinct from metronome)
+    const velocity = 120; // Slightly louder than metronome
+    
+    for (let output of this.midiAccess.outputs.values()) {
+      try {
+        // Send countdown beep
+        output.send([0xC0 + channel, 6]); // Harpsichord
+        output.send([0x90 + channel, note, velocity]); // Note On
+        
+        // Note Off after 100ms (slightly longer than metronome click)
+        setTimeout(() => {
+          try { output.send([0x80 + channel, note, 0]); } catch(e) {}
+        }, 100);
+      } catch (e) {
+        console.error("Error sending Countdown beep:", e);
       }
     }
   }

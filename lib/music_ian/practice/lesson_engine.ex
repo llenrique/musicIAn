@@ -333,8 +333,14 @@ defmodule MusicIan.Practice.LessonEngine do
         "¡Correcto! #{timing_message}"
       end
 
-    if next_index < total_steps do
-      # Continue Lesson
+    # === FIX: Correct off-by-one error ===
+    # total_steps is the count (e.g., 9)
+    # But valid indices are 0-8, so last_step_index = 8 = total_steps - 1
+    # We should check if current step_index < last_step_index to know if there are more steps
+    last_step_index = total_steps - 1
+
+    if state.step_index < last_step_index do
+      # Continue Lesson - there are more steps after the current one
       new_state = %{
         state
         | stats: new_stats,
@@ -342,9 +348,10 @@ defmodule MusicIan.Practice.LessonEngine do
           feedback: %{status: :success, message: message}
       }
 
+      IO.puts("   → Continuing (step #{state.step_index} < last step #{last_step_index})")
       {:continue, new_state}
     else
-      # Lesson Completed
+      # Lesson Completed - we just completed the last step
       new_state = %{
         state
         | stats: new_stats,
@@ -355,6 +362,7 @@ defmodule MusicIan.Practice.LessonEngine do
           feedback: %{status: :success, message: "¡Lección Completada!"}
       }
 
+      IO.puts("   → Completed (step #{state.step_index} >= last step #{last_step_index})")
       {:completed, new_state}
     end
   end

@@ -75,30 +75,28 @@ defmodule MusicIanWeb.TheoryLive do
     |> update_active_notes()
   end
 
-  defp assign_lesson_state(socket, %MusicIan.Practice.LessonEngine{} = state) do
-    # Check if lesson changed to trigger metronome
-    lesson_changed =
-      socket.assigns.current_lesson == nil or socket.assigns.current_lesson.id != state.lesson.id
+   defp assign_lesson_state(socket, %MusicIan.Practice.LessonEngine{} = state) do
+     # === FIX: Do NOT start metronome when lesson is loaded ===
+     # Metrónomo only starts when user clicks "begin_practice" and countdown completes
+     # This prevents metrónomo from playing in the lesson selection modal
+     socket =
+       socket
+       |> assign(:lesson_active, true)
+       |> assign(:lesson_state, state)
+       |> assign(:current_lesson, state.lesson)
+       |> assign(:current_step_index, state.step_index)
+       |> assign(:lesson_phase, state.phase)
+       |> assign(:lesson_feedback, state.feedback)
+       |> assign(:lesson_stats, state.stats)
+       # === FIX: Clear held_notes when lesson changes to prevent validation errors ===
+       |> assign(:held_notes, MapSet.new())
+       # === FIX: Ensure metronome is OFF until practice begins ===
+       |> assign(:metronome_active, false)
+       |> push_event("toggle_metronome", %{active: false, bpm: socket.assigns.tempo})
+       |> update_active_notes()
 
-    socket =
-      socket
-      |> assign(:lesson_active, true)
-      |> assign(:lesson_state, state)
-      |> assign(:current_lesson, state.lesson)
-      |> assign(:current_step_index, state.step_index)
-      |> assign(:lesson_phase, state.phase)
-      |> assign(:lesson_feedback, state.feedback)
-      |> assign(:lesson_stats, state.stats)
-      # === FIX: Clear held_notes when lesson changes to prevent validation errors ===
-      |> assign(:held_notes, MapSet.new())
-      |> update_active_notes()
-
-    if lesson_changed do
-      maybe_start_metronome(socket, state.lesson)
-    else
-      socket
-    end
-  end
+     socket
+   end
 
   defp maybe_start_metronome(socket, lesson) do
     if Map.get(lesson, :metronome, false) do
@@ -200,30 +198,35 @@ defmodule MusicIanWeb.TheoryLive do
     end
   end
 
-  def handle_event("stop_demo", _, socket) do
-    if socket.assigns.lesson_active do
-      # Use start_practice to properly reset step_index and stats
-      new_state = MusicIan.Practice.LessonEngine.start_practice(socket.assigns.lesson_state)
-      steps = socket.assigns.current_lesson.steps
-      tempo = socket.assigns.tempo
+   def handle_event("stop_demo", _, socket) do
+     if socket.assigns.lesson_active do
+       # Use start_practice to properly reset step_index and stats
+       new_state = MusicIan.Practice.LessonEngine.start_practice(socket.assigns.lesson_state)
+       steps = socket.assigns.current_lesson.steps
+       tempo = socket.assigns.tempo
+       
+       # === FIX: Check if lesson has metronome enabled ===
+       lesson = socket.assigns.current_lesson
+       metronome_enabled = Map.get(lesson, :metronome, false)
 
-      {:noreply,
-       socket
-       # Go back to active practice
-       |> assign(:lesson_phase, :active)
-       |> assign(:lesson_state, new_state)
-       |> assign(:current_step_index, 0)
-       |> assign(:lesson_stats, %{correct: 0, errors: 0})
-       |> push_event("stop_demo_sequence", %{})
-       |> push_event("lesson_started", %{
-         steps: steps,
-         tempo: tempo,
-         metronome_active: true
-       })}
-    else
-      {:noreply, socket}
-    end
-  end
+       {:noreply,
+        socket
+        # Go back to active practice
+        |> assign(:lesson_phase, :active)
+        |> assign(:lesson_state, new_state)
+        |> assign(:current_step_index, 0)
+        |> assign(:lesson_stats, %{correct: 0, errors: 0})
+        |> assign(:metronome_active, metronome_enabled)
+        |> push_event("stop_demo_sequence", %{})
+        |> push_event("lesson_started", %{
+          steps: steps,
+          tempo: tempo,
+          metronome_active: metronome_enabled
+        })}
+     else
+       {:noreply, socket}
+     end
+   end
 
   def handle_event("demo_step_update", %{"step_index" => index}, socket) do
     {:noreply, assign(socket, :current_step_index, index)}
@@ -557,45 +560,47 @@ defmodule MusicIanWeb.TheoryLive do
 
   # Removed validate_lesson_step as it is now replaced by LessonEngine logic
 
-  # === COUNTDOWN TIMER FOR PRACTICE START ===
-  def handle_info(:countdown_tick, socket) do
-    countdown = socket.assigns[:countdown] || 0
-    countdown_stage = socket.assigns[:countdown_stage] || :prepare
+   # === COUNTDOWN TIMER FOR PRACTICE START ===
+   def handle_info(:countdown_tick, socket) do
+     countdown = socket.assigns[:countdown] || 0
+     countdown_stage = socket.assigns[:countdown_stage] || :prepare
 
-    if countdown > 4 do
-      # === STAGE 1: "Preparado..." (Adaptation phase) ===
-      # First 10 seconds are for the student to adapt to the metronome
-      Process.send_after(self(), :countdown_tick, 1000)
-      {:noreply, 
-       socket
-       |> assign(:countdown, countdown - 1)
-       |> assign(:countdown_stage, :prepare)}
-    else
-      if countdown > 1 do
-        # === STAGE 2: "3, 2, 1" (Final countdown) ===
-        Process.send_after(self(), :countdown_tick, 1000)
-        {:noreply, 
-         socket
-         |> assign(:countdown, countdown - 1)
-         |> assign(:countdown_stage, :final)}
-      else
-        # === Countdown finished - start practice ===
-        steps = socket.assigns.current_lesson.steps
-        tempo = socket.assigns.tempo
+     if countdown > 4 do
+       # === STAGE 1: "Preparado..." (Adaptation phase) ===
+       # First 10 seconds are for the student to adapt to the metronome
+       Process.send_after(self(), :countdown_tick, 1000)
+       {:noreply, 
+        socket
+        |> assign(:countdown, countdown - 1)
+        |> assign(:countdown_stage, :prepare)}
+     else
+       if countdown > 1 do
+         # === STAGE 2: "3, 2, 1" (Final countdown) ===
+         # Send countdown_tick event to client for beep sounds
+         Process.send_after(self(), :countdown_tick, 1000)
+         {:noreply, 
+          socket
+          |> assign(:countdown, countdown - 1)
+          |> assign(:countdown_stage, :final)
+          |> push_event("countdown_tick", %{countdown: countdown - 1, stage: "final"})}
+       else
+         # === Countdown finished - start practice ===
+         steps = socket.assigns.current_lesson.steps
+         tempo = socket.assigns.tempo
 
-        {:noreply,
-         socket
-         |> assign(:lesson_phase, :active)
-         |> assign(:countdown, 0)
-         |> assign(:countdown_stage, nil)
-         |> push_event("lesson_started", %{
-           steps: steps,
-           tempo: tempo,
-           metronome_active: true
-         })}
-      end
-    end
-  end
+         {:noreply,
+          socket
+          |> assign(:lesson_phase, :active)
+          |> assign(:countdown, 0)
+          |> assign(:countdown_stage, nil)
+          |> push_event("lesson_started", %{
+            steps: steps,
+            tempo: tempo,
+            metronome_active: true
+          })}
+       end
+     end
+   end
 
   defp update_active_notes(socket) do
     if socket.assigns.lesson_active do
@@ -1099,33 +1104,35 @@ defmodule MusicIanWeb.TheoryLive do
         
      <!-- Countdown Timer Modal -->
          <%= if @lesson_active && @lesson_phase == :countdown do %>
-           <% 
-             # Adjust countdown display: 13-11 = "Preparado...", 10-4 = final countdown
-             display_countdown = max(0, @countdown - 10)
-             show_prepare = @countdown_stage == :prepare
-             show_final = @countdown_stage == :final
-           %>
-           <div class="absolute inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center">
-             <div class="bg-white rounded-2xl shadow-2xl p-12 max-w-md w-full text-center">
-               <%= if show_prepare do %>
-                 <!-- Adaptation phase -->
-                 <p class="text-slate-600 text-2xl mb-4 font-bold">Preparado...</p>
-                 <p class="text-slate-500 text-base mb-4">
-                   Escucha el metrónomo y adapta tu ritmo
-                 </p>
-                 <div class="text-lg text-slate-400 mb-4">
-                   Iniciando en {13 - @countdown} segundos
-                 </div>
-               <% else %>
-                 <!-- Final countdown 3, 2, 1 -->
-                 <p class="text-slate-600 text-xl mb-4">¡Comenzando!</p>
-                 <div class="text-9xl font-black text-red-600 animate-pulse">
-                   {display_countdown}
-                 </div>
-               <% end %>
-             </div>
-           </div>
-          <% end %>
+            <% 
+              # Stage 1 (prepare): countdown 13→5 = 10 seconds of "Preparado..."
+              # Stage 2 (final): countdown 4→1 = 3 seconds of "3, 2, 1"
+              # For final stage, display @countdown as 3, 2, 1
+              display_countdown = @countdown
+              show_prepare = @countdown_stage == :prepare
+              show_final = @countdown_stage == :final
+            %>
+            <div class="absolute inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center">
+              <div class="bg-white rounded-2xl shadow-2xl p-12 max-w-md w-full text-center">
+                <%= if show_prepare do %>
+                  <!-- Adaptation phase (10 seconds) -->
+                  <p class="text-slate-600 text-2xl mb-4 font-bold">Preparado...</p>
+                  <p class="text-slate-500 text-base mb-4">
+                    Escucha el metrónomo y adapta tu ritmo
+                  </p>
+                  <div class="text-lg text-slate-400 mb-4">
+                    Iniciando en <%= 13 - @countdown %> segundos
+                  </div>
+                <% else %>
+                  <!-- Final countdown: 3, 2, 1 (last 3 seconds) -->
+                  <p class="text-slate-600 text-xl mb-4">¡Comenzando!</p>
+                  <div class="text-9xl font-black text-red-600 animate-pulse">
+                    <%= display_countdown %>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+           <% end %>
          
       <!-- Post-Demo Confirmation Modal -->
           <%= if @lesson_active && @lesson_phase == :post_demo do %>
