@@ -371,49 +371,49 @@ const MidiDevice = {
     console.error("❌ Could not access MIDI devices.", msg);
   },
 
-  onMIDIMessage(message) {
-    // Debug: Log that we received *something*
-    // console.log("Raw message received");
+   onMIDIMessage(message) {
+     // Debug: Log that we received *something*
+     // console.log("Raw message received");
 
-    if (!message.data) return;
-    
-    const data = message.data;
-    const status = data[0];
-    const note = data[1];
-    const velocity = data.length > 2 ? data[2] : 0;
-    
-    const command = status >> 4;
-    const channel = status & 0xF;
-    
-    // Filter out Active Sensing (0xFE)
-    if (status === 0xFE) return;
+     if (!message.data) return;
+     
+     const data = message.data;
+     const status = data[0];
+     const note = data[1];
+     const velocity = data.length > 2 ? data[2] : 0;
+     
+     const command = status >> 4;
+     const channel = status & 0xF;
+     
+     // Filter out Active Sensing (0xFE)
+     if (status === 0xFE) return;
 
-    // Log Real-Time Messages
-    if (status >= 0xF8) {
-        const rtNames = {
-            0xF8: "Timing Clock",
-            0xFA: "Start",
-            0xFB: "Continue",
-            0xFC: "Stop",
-            0xFF: "Reset"
-        };
-        
-        // Handle Clock (0xF8) for BPM detection
-        if (status === 0xF8) {
-            this.handleIncomingClock();
-            return;
-        }
+     // Log Real-Time Messages
+     if (status >= 0xF8) {
+         const rtNames = {
+             0xF8: "Timing Clock",
+             0xFA: "Start",
+             0xFB: "Continue",
+             0xFC: "Stop",
+             0xFF: "Reset"
+         };
+         
+         // Handle Clock (0xF8) for BPM detection
+         if (status === 0xF8) {
+             this.handleIncomingClock();
+             return;
+         }
 
-        // Log Start/Stop/Continue prominently
-        if (status === 0xFA || status === 0xFC || status === 0xFB) {
-            console.log(`🎹 MIDI TRANSPORT RECEIVED: ${rtNames[status]} (0x${status.toString(16).toUpperCase()})`);
-            // Optional: Sync App state to Piano state
-            // if (status === 0xFA) this.pushEvent("metronome_started_externally", {});
-            // if (status === 0xFC) this.pushEvent("metronome_stopped_externally", {});
-        }
-        
-        return;
-    }
+         // Log Start/Stop/Continue with detailed information
+         if (status === 0xFA || status === 0xFC || status === 0xFB) {
+             this.logDetailedMIDIMessage("MIDI TRANSPORT", status, data, null, null);
+             // Optional: Sync App state to Piano state
+             // if (status === 0xFA) this.pushEvent("metronome_started_externally", {});
+             // if (status === 0xFC) this.pushEvent("metronome_stopped_externally", {});
+         }
+         
+         return;
+     }
     
     // === DISABLED: Log only relevant Note On/Off messages (too noisy) ===
     // if (command === 9 || command === 8) {
@@ -472,13 +472,43 @@ const MidiDevice = {
         this.triggerLocalEffects(note, 0, false, "midi-in");
         this.safePushEvent("midi_note_off", { midi: note });
       }
-    } 
-    // Note Off (128-143) -> 8
-    else if (command === 8) {
-      this.triggerLocalEffects(note, 0, false, "midi-in");
-      this.safePushEvent("midi_note_off", { midi: note });
-    }
-  },
+     } 
+     // Note Off (128-143) -> 8
+     else if (command === 8) {
+       this.triggerLocalEffects(note, 0, false, "midi-in");
+       this.safePushEvent("midi_note_off", { midi: note });
+     }
+     // Control Change (176-191) -> 11 (0xB)
+     else if (command === 0xB) {
+       const ccNumber = data[1];
+       const ccValue = data[2];
+       this.logDetailedMIDIMessage("CONTROL CHANGE", status, data, ccNumber, ccValue);
+       // Can add server event if needed for special CCs
+     }
+     // Program Change (192-207) -> 12 (0xC)
+     else if (command === 0xC) {
+       const program = data[1];
+       this.logDetailedMIDIMessage("PROGRAM CHANGE", status, data, program, null);
+     }
+     // Channel Pressure (208-223) -> 13 (0xD)
+     else if (command === 0xD) {
+       const pressure = data[1];
+       this.logDetailedMIDIMessage("CHANNEL PRESSURE", status, data, null, pressure);
+     }
+     // Pitch Bend (224-239) -> 14 (0xE)
+     else if (command === 0xE) {
+       const lsb = data[1];
+       const msb = data[2];
+       const pitchValue = (msb << 7) | lsb;
+       this.logDetailedMIDIMessage("PITCH BEND", status, data, pitchValue, null);
+     }
+     // Polyphonic Pressure/Aftertouch (160-175) -> 10 (0xA)
+     else if (command === 0xA) {
+       const polyNote = data[1];
+       const pressure = data[2];
+       this.logDetailedMIDIMessage("POLYPHONIC PRESSURE", status, data, polyNote, pressure);
+     }
+   },
 
   handleIncomingClock() {
     const now = performance.now();
@@ -902,6 +932,99 @@ const MidiDevice = {
         console.error("Error sending Countdown beep:", e);
       }
     }
+  },
+
+  /**
+   * === Detailed MIDI Message Logging ===
+   * Logs comprehensive information about MIDI messages including:
+   * - Message type (Note On/Off, CC, PC, SysEx, etc.)
+   * - Channel number
+   * - Data bytes
+   * - Human-readable interpretation
+   */
+  logDetailedMIDIMessage(messageType, status, data, note, velocity) {
+    const channel = (status & 0x0F) + 1; // Channels are 0-15, display as 1-16
+    const command = status >> 4;
+    
+    // Command name mapping
+    const commandNames = {
+      0x8: "Note Off",
+      0x9: "Note On",
+      0xA: "Polyphonic Pressure",
+      0xB: "Control Change (CC)",
+      0xC: "Program Change (PC)",
+      0xD: "Channel Pressure",
+      0xE: "Pitch Bend",
+      0xF: "System Message"
+    };
+    
+    // System message names (0xF0-0xFF)
+    const systemMessageNames = {
+      0xF0: "System Exclusive (SysEx)",
+      0xF1: "MIDI Time Code Quarter Frame",
+      0xF2: "Song Position Pointer",
+      0xF3: "Song Select",
+      0xF4: "Undefined",
+      0xF5: "Undefined",
+      0xF6: "Tune Request",
+      0xF7: "End of Exclusive",
+      0xF8: "Timing Clock",
+      0xF9: "Undefined",
+      0xFA: "Start",
+      0xFB: "Continue",
+      0xFC: "Stop",
+      0xFD: "Undefined",
+      0xFE: "Active Sensing",
+      0xFF: "System Reset"
+    };
+
+    let commandName = "";
+    let isSystemMessage = status >= 0xF0;
+    
+    if (isSystemMessage) {
+      commandName = systemMessageNames[status] || "Unknown System Message";
+    } else {
+      commandName = commandNames[command] || "Unknown Message";
+    }
+
+    // Format hex bytes
+    const hexBytes = Array.from(data)
+      .map(b => `0x${b.toString(16).toUpperCase().padStart(2, '0')}`)
+      .join(" ");
+
+    // Build detailed log message
+    let logMessage = `🎹 MIDI MESSAGE RECEIVED\n`;
+    logMessage += `   Type: ${messageType} | ${commandName}\n`;
+    logMessage += `   Raw Bytes: ${hexBytes}\n`;
+    logMessage += `   Status Byte: 0x${status.toString(16).toUpperCase().padStart(2, '0')}\n`;
+
+    if (!isSystemMessage) {
+      logMessage += `   Channel: ${channel}\n`;
+      
+      if (command === 0x9 || command === 0x8) { // Note On/Off
+        logMessage += `   Note: ${note} (MIDI Note Number)\n`;
+        logMessage += `   Velocity: ${velocity}\n`;
+      } else if (command === 0xB) { // Control Change
+        logMessage += `   CC Number: ${data[1]}\n`;
+        logMessage += `   CC Value: ${data[2]}\n`;
+      } else if (command === 0xC) { // Program Change
+        logMessage += `   Program: ${data[1]}\n`;
+      } else if (command === 0xE) { // Pitch Bend
+        const lsb = data[1];
+        const msb = data[2];
+        const pitchValue = (msb << 7) | lsb;
+        logMessage += `   Pitch Bend: ${pitchValue} (0x${pitchValue.toString(16).toUpperCase()})\n`;
+      }
+    }
+
+    logMessage += `   Timestamp: ${new Date().toLocaleTimeString('es-ES', { 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      second: '2-digit',
+      fractionalSecondDigits: 3
+    })}`;
+
+    console.log(logMessage);
   }
 };
 
