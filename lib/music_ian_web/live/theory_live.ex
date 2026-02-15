@@ -477,16 +477,23 @@ defmodule MusicIanWeb.TheoryLive do
                midi,
                timing_info
              ) do
-           {:continue, new_state} ->
-             # === FIX: Clear held_notes when step advances (user must release keys for next step) ===
-             {:noreply,
-              socket
-              |> assign(:current_step_index, new_state.step_index)
-              |> assign(:lesson_stats, new_state.stats)
-              |> assign(:lesson_feedback, new_state.feedback)
-              |> assign(:held_notes, MapSet.new())
-              # IMPORTANT: Update internal state
-              |> assign(:lesson_state, new_state)}
+            {:continue, new_state} ->
+              # === FIX: Update FSM (not LessonEngine) for continued practice ===
+              updated_fsm = %{fsm | 
+                step_index: new_state.step_index,
+                stats: new_state.stats,
+                feedback: new_state.feedback,
+                step_analysis: new_state.step_analysis
+              }
+              
+              {:noreply,
+               socket
+               |> assign(:current_step_index, new_state.step_index)
+               |> assign(:lesson_stats, new_state.stats)
+               |> assign(:lesson_feedback, new_state.feedback)
+               |> assign(:held_notes, MapSet.new())
+               # IMPORTANT: Keep FSM as the source of truth
+               |> assign(:lesson_state, updated_fsm)}
 
             {:completed, new_state} ->
                # === FSM TRANSITION: active → summary ===
@@ -524,13 +531,20 @@ defmodule MusicIanWeb.TheoryLive do
                    {:noreply, socket}
                end
 
-          {:error, new_state} ->
-            {:noreply,
-             socket
-             |> assign(:lesson_stats, new_state.stats)
-             |> assign(:lesson_feedback, new_state.feedback)
-             # Update state for stats
-             |> assign(:lesson_state, new_state)}
+           {:error, new_state} ->
+             # === Update FSM with error state ===
+             updated_fsm = %{fsm | 
+               stats: new_state.stats,
+               feedback: new_state.feedback,
+               step_analysis: new_state.step_analysis
+             }
+             
+             {:noreply,
+              socket
+              |> assign(:lesson_stats, new_state.stats)
+              |> assign(:lesson_feedback, new_state.feedback)
+              # Keep FSM as source of truth
+              |> assign(:lesson_state, updated_fsm)}
 
           {:ignore, _} ->
             {:noreply, socket}
