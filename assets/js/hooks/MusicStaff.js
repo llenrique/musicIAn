@@ -42,6 +42,9 @@ const MusicStaff = {
 
   updated() {
     // Reset tooltip state when updated (e.g., tonality change)
+    // IMPORTANT: Hide tooltip FIRST before resetting state
+    this.hideTooltip();
+    
     this.tooltipInitialized = false;
     this.overlay = null;
     
@@ -65,6 +68,25 @@ const MusicStaff = {
 
   destroyed() {
     if (this.resizeObserver) this.resizeObserver.disconnect();
+    this.cleanupOverlay();
+  },
+  
+  cleanupOverlay() {
+    // Remove old event listeners before removing overlay
+    if (this.overlay && this.overlayMouseMoveHandler) {
+      this.overlay.removeEventListener("mousemove", this.overlayMouseMoveHandler);
+      this.overlay.removeEventListener("mouseout", this.overlayMouseOutHandler);
+      this.overlay.removeEventListener("mouseleave", this.overlayMouseLeaveHandler);
+    }
+    
+    // Hide tooltip
+    this.hideTooltip();
+    
+    // Clear overlay reference
+    this.overlay = null;
+    this.overlayMouseMoveHandler = null;
+    this.overlayMouseOutHandler = null;
+    this.overlayMouseLeaveHandler = null;
   },
   
   highlightNote(midi) {
@@ -79,6 +101,9 @@ const MusicStaff = {
   },
 
   draw() {
+    // Clean up old overlay listeners before clearing HTML
+    this.cleanupOverlay();
+    
     this.div.innerHTML = "";
     
     // Get parent dimensions or use clientWidth
@@ -316,55 +341,61 @@ const MusicStaff = {
      }, 100);
    },
 
-  initTooltip() {
-    // Create tooltip element
-    if (!this.tooltip) {
-      this.tooltip = document.createElement("div");
-      this.tooltip.className = "staff-tooltip";
-      this.tooltip.style.cssText = `
-        position: fixed;
-        background: rgba(15, 23, 42, 0.95);
-        color: #f1f5f9;
-        padding: 12px 16px;
-        border-radius: 8px;
-        font-size: 12px;
-        line-height: 1.5;
-        max-width: 320px;
-        z-index: 9999;
-        pointer-events: none;
-        opacity: 0;
-        transition: opacity 0.2s ease;
-        border-left: 3px solid #8b5cf6;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-      `;
-      document.body.appendChild(this.tooltip);
-    }
-    
-    // Create invisible overlay over staff for mouse tracking
-    if (!this.overlay) {
-      this.overlay = document.createElement("div");
-      this.overlay.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 1000;
-        pointer-events: auto;
-        cursor: pointer;
-      `;
-      
-      const svg = this.div.querySelector("svg");
-      if (svg && svg.parentElement) {
-        // Insert overlay after SVG
-        svg.parentElement.style.position = "relative";
-        svg.parentElement.appendChild(this.overlay);
-        
-        this.overlay.addEventListener("mousemove", (e) => this.handleOverlayMouseMove(e));
-        this.overlay.addEventListener("mouseout", () => this.hideTooltip());
-      }
-    }
-  },
+   initTooltip() {
+     // Create tooltip element
+     if (!this.tooltip) {
+       this.tooltip = document.createElement("div");
+       this.tooltip.className = "staff-tooltip";
+       this.tooltip.style.cssText = `
+         position: fixed;
+         background: rgba(15, 23, 42, 0.95);
+         color: #f1f5f9;
+         padding: 12px 16px;
+         border-radius: 8px;
+         font-size: 12px;
+         line-height: 1.5;
+         max-width: 320px;
+         z-index: 9999;
+         pointer-events: none;
+         opacity: 0;
+         transition: opacity 0.2s ease;
+         border-left: 3px solid #8b5cf6;
+         box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+       `;
+       document.body.appendChild(this.tooltip);
+     }
+     
+     // Create invisible overlay over staff for mouse tracking
+     if (!this.overlay) {
+       this.overlay = document.createElement("div");
+       this.overlay.style.cssText = `
+         position: absolute;
+         top: 0;
+         left: 0;
+         right: 0;
+         bottom: 0;
+         z-index: 1000;
+         pointer-events: auto;
+         cursor: pointer;
+       `;
+       
+       const svg = this.div.querySelector("svg");
+       if (svg && svg.parentElement) {
+         // Insert overlay after SVG
+         svg.parentElement.style.position = "relative";
+         svg.parentElement.appendChild(this.overlay);
+         
+         // Store bound handlers so we can remove them later
+         this.overlayMouseMoveHandler = (e) => this.handleOverlayMouseMove(e);
+         this.overlayMouseOutHandler = () => this.hideTooltip();
+         this.overlayMouseLeaveHandler = () => this.hideTooltip();
+         
+         this.overlay.addEventListener("mousemove", this.overlayMouseMoveHandler);
+         this.overlay.addEventListener("mouseout", this.overlayMouseOutHandler);
+         this.overlay.addEventListener("mouseleave", this.overlayMouseLeaveHandler);
+       }
+     }
+   },
 
   handleOverlayMouseMove(e) {
     const explanationsArray = Object.values(this.explanations);
