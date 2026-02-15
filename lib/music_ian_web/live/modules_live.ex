@@ -179,6 +179,16 @@ defmodule MusicIanWeb.ModulesLive do
                               </div>
                             </div>
                           <% end %>
+
+                          <.link
+                            navigate={~p"/"}
+                            class="mt-2 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded transition-colors flex items-center justify-center gap-2 w-full"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.591-.784l11.54 9.257a1.647 1.647 0 010 2.554l-11.54 9.257c-.674.614-1.591.07-1.591-.784V5.653z" />
+                            </svg>
+                            Ir a Explorador
+                          </.link>
                         <% else %>
                           <div class="text-center">
                             <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center">
@@ -187,6 +197,16 @@ defmodule MusicIanWeb.ModulesLive do
                               </svg>
                             </div>
                             <p class="text-xs text-slate-500 mt-2">No iniciada</p>
+
+                            <.link
+                              navigate={~p"/"}
+                              class="mt-3 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors flex items-center justify-center gap-2 w-full"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.591-.784l11.54 9.257a1.647 1.647 0 010 2.554l-11.54 9.257c-.674.614-1.591.07-1.591-.784V5.653z" />
+                              </svg>
+                              Ir a Explorador
+                            </.link>
                           </div>
                         <% end %>
                       </div>
