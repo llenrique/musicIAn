@@ -251,24 +251,29 @@ defmodule MusicIanWeb.TheoryLive do
   # REMOVED: handle_info(:next_demo_step) and related demo loop functions
   # as they are now handled client-side.
 
-  def handle_event("begin_practice", _, socket) do
-    if socket.assigns.lesson_active do
-      new_state = MusicIan.Practice.LessonEngine.start_practice(socket.assigns.lesson_state)
+   def handle_event("begin_practice", _, socket) do
+     if socket.assigns.lesson_active do
+       new_state = MusicIan.Practice.LessonEngine.start_practice(socket.assigns.lesson_state)
 
-      # === FIX: Start with extended preparation time ===
-      # countdown = 13 (10 sec "Preparado..." + 3 sec "3,2,1")
-      Process.send_after(self(), :countdown_tick, 1000)
-      
-      {:noreply,
-       socket
-       |> assign(:lesson_phase, :countdown)
-       |> assign(:countdown, 13)
-       |> assign(:countdown_stage, :prepare)
-       |> assign(:lesson_state, new_state)}
-    else
-      {:noreply, socket}
-    end
-  end
+       # === FIX: Check if lesson has metronome enabled ===
+       lesson = socket.assigns.current_lesson
+       metronome_enabled = Map.get(lesson, :metronome, false)
+
+       # === FIX: Start with extended preparation time ===
+       # countdown = 13 (10 sec "Preparado..." + 3 sec "3,2,1")
+       Process.send_after(self(), :countdown_tick, 1000)
+       
+       {:noreply,
+        socket
+        |> assign(:lesson_phase, :countdown)
+        |> assign(:countdown, 13)
+        |> assign(:countdown_stage, :prepare)
+        |> assign(:metronome_active, metronome_enabled)
+        |> assign(:lesson_state, new_state)}
+     else
+       {:noreply, socket}
+     end
+   end
 
   def handle_event("stop_lesson", _, socket) do
     {:noreply, assign_lesson_state(socket, nil)}
@@ -587,6 +592,7 @@ defmodule MusicIanWeb.TheoryLive do
          # === Countdown finished - start practice ===
          steps = socket.assigns.current_lesson.steps
          tempo = socket.assigns.tempo
+         metronome_enabled = socket.assigns.metronome_active
 
          {:noreply,
           socket
@@ -596,7 +602,7 @@ defmodule MusicIanWeb.TheoryLive do
           |> push_event("lesson_started", %{
             steps: steps,
             tempo: tempo,
-            metronome_active: true
+            metronome_active: metronome_enabled
           })}
        end
      end
