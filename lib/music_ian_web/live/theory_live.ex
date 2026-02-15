@@ -15,7 +15,7 @@ defmodule MusicIanWeb.TheoryLive do
 
   alias MusicIanWeb.Components.PracticeComparison
 
-  def mount(_params, _session, socket) do
+  def mount(params, _session, socket) do
     # Default state: C Major Scale
     socket =
       socket
@@ -54,6 +54,22 @@ defmodule MusicIanWeb.TheoryLive do
       |> assign(:lesson_stats, %{correct: 0, errors: 0})
       |> assign(:countdown, 0)
       |> update_active_notes()
+
+    # Auto-start lesson if lesson_id parameter is provided
+    socket = 
+      case Map.get(params, "lesson_id") do
+        nil -> socket
+        lesson_id -> 
+          case MusicIan.Practice.FSM.LessonFSM.new(lesson_id) do
+            {:ok, fsm_state} ->
+              socket
+              |> assign(:show_help, false)
+              |> assign_fsm_state(fsm_state)
+            
+            {:error, _reason} ->
+              socket
+          end
+      end
 
     {:ok, socket}
   end
