@@ -41,8 +41,26 @@ El sistema se divide en 3 dominios principales (Contextos):
     - Visualización de escalas y modos.
     - Síntesis de audio vía Web Audio API (Hook `AudioEngine`).
 
+## Flujo de Lecciones (SIMPLIFICADO)
+Ver: [LESSON_FLOW_SIMPLIFIED.md](LESSON_FLOW_SIMPLIFIED.md)
+
+**Estados (lesson_phase):**
+- `:intro` → Lección cargada (mostrar modal)
+- `:demo` → Reproduciendo ejemplo (metrónomo OFF)
+- `:post_demo` → Después de demo (usuario elige: repetir o practicar)
+- `:countdown` → Preparación 10 seg (metrónomo ON si aplica)
+- `:active` → Práctica activa (validación de notas)
+- `:summary` → Lección completada
+
+**Reglas Importantes:**
+1. Metrónomo se activa SOLO en `begin_practice` si `lesson.metronome == true`
+2. NO se puede hacer toggle_metronome durante `:countdown` o `:demo`
+3. Validación solo ocurre en `:active`
+4. stop_demo → :post_demo (NO :active)
+
 ## Documentación Técnica Adicional
 - [Viabilidad Técnica y Estrategia MIDI](TECHNICAL_FEASIBILITY.md)
+- [Flujo Simplificado de Lecciones](LESSON_FLOW_SIMPLIFIED.md) ⭐ LEER PRIMERO
 - **Teoría Musical (Base de Conocimiento)**:
     - [Fundamentos](knowledge/music_theory/01_fundamentals.md)
     - [Intervalos y Escalas](knowledge/music_theory/02_intervals_and_scales.md)
@@ -56,12 +74,16 @@ El sistema se divide en 3 dominios principales (Contextos):
     - [Maestría Global](knowledge/music_theory/10_global_mastery.md)
 
 ## Estado Actual
-- **Fecha**: 2026-02-13
-- **Fase**: Implementación del MVP.
+- **Fecha**: 2026-02-14
+- **Fase**: Refactorización y simplificación del flujo de lecciones.
 - **Logros**:
     - Estructura base Phoenix creada.
     - `MusicCore` implementado (Notas, Escalas, Acordes).
     - Interfaz `TheoryLive` funcional con audio y visualización.
+    - Flujo de lecciones simplificado y documentado.
+    - Tooltips corregidos (no se quedan pegados).
+    - Metrónomo integrado en countdown.
+    - Bugs críticos de lecciones corregidos.
 
 ## Convenciones
 - **Código**: Inglés (variables, funciones, módulos).
