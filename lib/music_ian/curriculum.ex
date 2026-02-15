@@ -1,20 +1,20 @@
 defmodule MusicIan.Curriculum do
   @moduledoc """
-  The Curriculum context - manages lessons from database.
+  Public API for curriculum operations.
+  Delegates to Manager for data retrieval and Helper for transformations.
   """
 
-  import Ecto.Query, warn: false
-  alias MusicIan.Repo
-  alias MusicIan.Curriculum.Lesson
+  alias MusicIan.Practice.Manager.LessonManager
+  alias MusicIan.Practice.Helper.LessonHelperConvert
 
   @doc """
   Get a lesson by ID from database.
   Returns a map suitable for use in lessons.
   """
   def get_lesson(lesson_id) when is_binary(lesson_id) do
-    case Repo.get(Lesson, lesson_id) do
+    case LessonManager.get_lesson(lesson_id) do
       nil -> nil
-      lesson -> lesson_to_map(lesson)
+      lesson -> LessonHelperConvert.schema_to_map(lesson)
     end
   end
 
@@ -24,19 +24,21 @@ defmodule MusicIan.Curriculum do
   Get all lessons from database ordered by order field.
   """
   def list_lessons do
-    Repo.all(from l in Lesson, order_by: [asc: l.order, asc: l.id])
-    |> Enum.map(&lesson_to_map/1)
+    LessonManager.list_all_lessons()
+    |> LessonHelperConvert.schemas_to_maps()
   end
 
-  # Convert Lesson schema to map for frontend
-  defp lesson_to_map(%Lesson{} = lesson) do
-    %{
-      id: lesson.id,
-      title: lesson.title,
-      description: lesson.description,
-      intro: lesson.intro,
-      steps: lesson.steps || [],
-      metronome: lesson.metronome
-    }
+  @doc """
+  Get the next lesson ID after the given lesson_id.
+  """
+  def get_next_lesson_id(lesson_id) when is_binary(lesson_id) do
+    lesson_ids = LessonManager.get_lesson_ids()
+
+    case Enum.find_index(lesson_ids, fn id -> id == lesson_id end) do
+      nil -> nil
+      idx -> Enum.at(lesson_ids, idx + 1)
+    end
   end
+
+  def get_next_lesson_id(_), do: nil
 end
