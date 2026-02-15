@@ -1,8 +1,10 @@
 # Script to seed lessons database
 alias MusicIan.Repo
 alias MusicIan.Curriculum.Lesson
+alias MusicIan.Curriculum.LessonMetadata
 
 IO.puts "🗑️ Clearing database..."
+Repo.delete_all(LessonMetadata)
 Repo.delete_all(Lesson)
 IO.puts "✅ Database cleared!"
 
@@ -514,3 +516,15 @@ Enum.each(lessons, fn lesson ->
 end)
 
 IO.puts("✅ All lessons inserted!")
+
+# Insert lesson metadata
+IO.puts("🎼 Loading lesson metadata...")
+metadata_list = Code.eval_file("priv/repo/seed_lesson_metadata_data.exs") |> elem(0)
+
+IO.puts("📋 Inserting #{Enum.count(metadata_list)} lesson metadata records...")
+
+Enum.each(metadata_list, fn metadata ->
+  MusicIan.Repo.insert!(LessonMetadata.changeset(%LessonMetadata{}, metadata))
+end)
+
+IO.puts("✅ All lesson metadata inserted!")

@@ -83,6 +83,7 @@ defmodule MusicIan.Curriculum.LessonMetadata do
       :updated_at_lesson
     ])
     |> validate_required([:lesson_id])
+    |> foreign_key_constraint(:lesson_id, name: :lesson_metadata_lesson_id_fkey)
     |> validate_number(:accuracy_required, greater_than_or_equal_to: 0.0, less_than_or_equal_to: 1.0)
     |> validate_number(:difficulty_level, greater_than_or_equal_to: 1, less_than_or_equal_to: 10)
     |> validate_number(:tempo_bpm, greater_than: 0)
