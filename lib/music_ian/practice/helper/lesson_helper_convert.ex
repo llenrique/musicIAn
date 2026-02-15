@@ -25,8 +25,7 @@ defmodule MusicIan.Practice.Helper.LessonHelperConvert do
       motor_complexity: lesson.motor_complexity || "basic",
       duration_minutes: lesson.duration_minutes,
       module_id: lesson.module_id,
-      order: lesson.order,
-      metadata: lesson.metadata || %{}
+      order: lesson.order
     }
   end
 
