@@ -7,6 +7,7 @@ defmodule MusicIan.Practice.Helper.LessonHelperConvert do
   @doc """
   Convert Lesson schema to map for frontend use.
   Handles JSON key conversion (strings → atoms).
+  Includes all lesson metadata and pedagogical information.
   """
   def schema_to_map(%MusicIan.Curriculum.Lesson{} = lesson) do
     %{
@@ -15,7 +16,17 @@ defmodule MusicIan.Practice.Helper.LessonHelperConvert do
       description: lesson.description,
       intro: lesson.intro,
       steps: convert_steps_keys(lesson.steps || []),
-      metronome: lesson.metronome
+      metronome: lesson.metronome,
+      # Pedagogical metadata
+      focus: lesson.focus,
+      new_concepts: lesson.new_concepts || [],
+      confidence_level_target: lesson.confidence_level_target,
+      cognitive_complexity: lesson.cognitive_complexity || "basic",
+      motor_complexity: lesson.motor_complexity || "basic",
+      duration_minutes: lesson.duration_minutes,
+      module_id: lesson.module_id,
+      order: lesson.order,
+      metadata: lesson.metadata || %{}
     }
   end
 
