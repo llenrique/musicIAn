@@ -259,17 +259,30 @@ defmodule MusicIanWeb.TheoryLive do
        lesson = socket.assigns.current_lesson
        metronome_enabled = Map.get(lesson, :metronome, false)
 
-       # === FIX: Start with extended preparation time ===
-       # countdown = 13 (10 sec "Preparado..." + 3 sec "3,2,1")
+       # === FIX: Start countdown 10 seconds ===
+       # Metronome activates immediately if lesson has it
+       # Countdown: 10, 9, 8, 7, 6, 5, 4, then "Listo, Set, ¡Vamos!" for 3, 2, 1
        Process.send_after(self(), :countdown_tick, 1000)
        
-       {:noreply,
-        socket
-        |> assign(:lesson_phase, :countdown)
-        |> assign(:countdown, 13)
-        |> assign(:countdown_stage, :prepare)
-        |> assign(:metronome_active, metronome_enabled)
-        |> assign(:lesson_state, new_state)}
+       socket_updated =
+         socket
+         |> assign(:lesson_phase, :countdown)
+         |> assign(:countdown, 10)
+         |> assign(:countdown_stage, :counting)
+         |> assign(:lesson_state, new_state)
+       
+       # === ACTIVATE METRONOME NOW if lesson has it ===
+       socket_updated =
+         if metronome_enabled do
+           socket_updated
+           |> assign(:metronome_active, true)
+           |> push_event("toggle_metronome", %{active: true, bpm: socket_updated.assigns.tempo})
+         else
+           socket_updated
+           |> assign(:metronome_active, false)
+         end
+       
+       {:noreply, socket_updated}
      else
        {:noreply, socket}
      end
@@ -566,28 +579,30 @@ defmodule MusicIanWeb.TheoryLive do
   # Removed validate_lesson_step as it is now replaced by LessonEngine logic
 
    # === COUNTDOWN TIMER FOR PRACTICE START ===
+   # Countdown: 10 → 0 seconds
+   # Metronome is already active (started in begin_practice)
+   # At 3,2,1: show "Listo, Set, ¡Vamos!" with beeps
    def handle_info(:countdown_tick, socket) do
      countdown = socket.assigns[:countdown] || 0
-     countdown_stage = socket.assigns[:countdown_stage] || :prepare
 
-     if countdown > 4 do
-       # === STAGE 1: "Preparado..." (Adaptation phase) ===
-       # First 10 seconds are for the student to adapt to the metronome
+     if countdown > 3 do
+       # === STAGE 1: Normal countdown (10 → 4) ===
+       # Just show the number counting down
        Process.send_after(self(), :countdown_tick, 1000)
        {:noreply, 
         socket
         |> assign(:countdown, countdown - 1)
-        |> assign(:countdown_stage, :prepare)}
+        |> assign(:countdown_stage, :counting)}
      else
-       if countdown > 1 do
-         # === STAGE 2: "3, 2, 1" (Final countdown) ===
-         # Send countdown_tick event to client for beep sounds
+       if countdown > 0 do
+         # === STAGE 2: "Listo, Set, ¡Vamos!" (3 → 1) ===
+         # Show Spanish countdown with beeps
          Process.send_after(self(), :countdown_tick, 1000)
          {:noreply, 
           socket
           |> assign(:countdown, countdown - 1)
           |> assign(:countdown_stage, :final)
-          |> push_event("countdown_tick", %{countdown: countdown - 1, stage: "final"})}
+          |> push_event("countdown_tick", %{countdown: countdown, stage: "final"})}
        else
          # === Countdown finished - start practice ===
          steps = socket.assigns.current_lesson.steps
@@ -1109,36 +1124,42 @@ defmodule MusicIanWeb.TheoryLive do
         <% end %>
         
      <!-- Countdown Timer Modal -->
-         <%= if @lesson_active && @lesson_phase == :countdown do %>
-            <% 
-              # Stage 1 (prepare): countdown 13→5 = 10 seconds of "Preparado..."
-              # Stage 2 (final): countdown 4→1 = 3 seconds of "3, 2, 1"
-              # For final stage, display @countdown as 3, 2, 1
-              display_countdown = @countdown
-              show_prepare = @countdown_stage == :prepare
-              show_final = @countdown_stage == :final
-            %>
-            <div class="absolute inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center">
-              <div class="bg-white rounded-2xl shadow-2xl p-12 max-w-md w-full text-center">
-                <%= if show_prepare do %>
-                  <!-- Adaptation phase (10 seconds) -->
-                  <p class="text-slate-600 text-2xl mb-4 font-bold">Preparado...</p>
-                  <p class="text-slate-500 text-base mb-4">
-                    Escucha el metrónomo y adapta tu ritmo
-                  </p>
-                  <div class="text-lg text-slate-400 mb-4">
-                    Iniciando en <%= 13 - @countdown %> segundos
-                  </div>
-                <% else %>
-                  <!-- Final countdown: 3, 2, 1 (last 3 seconds) -->
-                  <p class="text-slate-600 text-xl mb-4">¡Comenzando!</p>
-                  <div class="text-9xl font-black text-red-600 animate-pulse">
-                    <%= display_countdown %>
-                  </div>
-                <% end %>
-              </div>
-            </div>
-           <% end %>
+          <%= if @lesson_active && @lesson_phase == :countdown do %>
+             <% 
+               # Countdown: 10 → 0 seconds
+               # Stage 1 (counting): 10 → 4 - show number
+               # Stage 2 (final): 3 → 1 - show "Listo, Set, ¡Vamos!"
+               show_counting = @countdown_stage == :counting
+               show_final = @countdown_stage == :final
+               
+               # Map countdown to Spanish words for final stage
+               final_words = %{
+                 3 => "Listo",
+                 2 => "Set",
+                 1 => "¡Vamos!"
+               }
+               final_display = Map.get(final_words, @countdown, "")
+             %>
+             <div class="absolute inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center">
+               <div class="bg-white rounded-2xl shadow-2xl p-12 max-w-md w-full text-center">
+                 <%= if show_counting do %>
+                   <!-- Counting phase: 10 → 4 seconds -->
+                   <p class="text-slate-600 text-xl mb-4 font-semibold">Metrónomo Activo</p>
+                   <div class="text-8xl font-black text-blue-600 animate-pulse mb-6">
+                     <%= @countdown %>
+                   </div>
+                   <p class="text-slate-500 text-sm">
+                     Escucha el metrónomo y adapta tu ritmo
+                   </p>
+                 <% else %>
+                   <!-- Final countdown: "Listo, Set, ¡Vamos!" (3 → 1) -->
+                   <div class="text-7xl font-black text-green-600 animate-pulse">
+                     <%= final_display %>
+                   </div>
+                 <% end %>
+               </div>
+             </div>
+            <% end %>
          
       <!-- Post-Demo Confirmation Modal -->
           <%= if @lesson_active && @lesson_phase == :post_demo do %>
