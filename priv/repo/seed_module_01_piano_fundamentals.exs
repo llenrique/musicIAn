@@ -21,63 +21,62 @@ lessons_module_01 = [
   %{
     id: "1_01_meet_the_piano",
     title: "1.1 Conoce el Piano",
-    description: "Observa las partes principales del piano y entiende qué es.",
+    description: "Observa las partes principales del piano: teclas blancas, teclas negras y patrones básicos.",
     intro:
-      "¡Bienvenido! Este es un piano. Tiene muchas teclas blancas y negras. Las teclas son lo que tocas con los dedos. Hoy vamos a explorar.",
+      "¡Bienvenido al piano! Este instrumento tiene muchas teclas blancas y negras. Las teclas son lo que tocas con los dedos. Observemos cómo están organizadas.",
     metronome: false,
     module_id: "mod_001_piano_fundamentals",
     order: 1,
     steps: [
-      %{text: "Ve las teclas blancas", note: 0, hint: "Hay muchas teclas blancas", finger: 0, duration: 0},
-      %{text: "Ve las teclas negras", note: 0, hint: "Agrupadas de 2 y de 3", finger: 0, duration: 0},
+      %{text: "Observa las teclas blancas", note: 0, hint: "Hay muchas teclas blancas", finger: 0, duration: 0},
+      %{text: "Observa las teclas negras", note: 0, hint: "Están agrupadas en patrones", finger: 0, duration: 0},
       %{text: "Toca una tecla blanca", note: 60, hint: "¡Escuchas un sonido!", finger: 1, duration: 1},
       %{text: "Toca otra tecla blanca", note: 62, hint: "Sonido diferente", finger: 2, duration: 1},
       %{text: "Toca una tecla negra", note: 61, hint: "También suena", finger: 2, duration: 1}
     ],
     # ENRICHED METADATA
-    focus: "Visual orientation to piano keyboard structure",
+    focus: "Visual orientation to piano keyboard structure and basic touch",
     new_concepts: [
       "piano_keyboard_layout",
       "white_keys",
       "black_keys",
-      "key_group_patterns",
-      "keyboard_tactile_exploration"
+      "key_group_patterns"
     ],
-    confidence_level_target: "Curious, not overwhelmed; comfortable exploring visually",
+    confidence_level_target: "Curious and comfortable exploring the keyboard visually",
     cognitive_complexity: "basic",
     motor_complexity: "basic",
-    duration_minutes: 20
+    duration_minutes: 5
   },
 
   # Lesson 1.2 - White and Black Keys Pattern
   %{
     id: "1_02_white_black_pattern",
     title: "1.2 El Patrón de Teclas: Blancas y Negras",
-    description: "Observa que hay un patrón que se repite: 2 negras, 3 negras, 2 negras, 3 negras...",
+    description: "Aprende el patrón que se repite: 2 negras, 3 negras, 2 negras, 3 negras... Este patrón te ayudará a orientarte en el piano.",
     intro:
-      "Mira bien: Las teclas negras están agrupadas. Hay grupos de 2 teclas negras, luego un grupo de 3. Este patrón se repite en todo el piano.",
+      "Observa bien: Las teclas negras están agrupadas en un patrón que se repite. Hay grupos de 2 teclas negras, luego un grupo de 3. Este mismo patrón se repite en todo el piano. Este patrón es tu brújula.",
     metronome: false,
     module_id: "mod_001_piano_fundamentals",
     order: 2,
     steps: [
       %{text: "Encuentra un grupo de 2 negras", note: 0, hint: "¿Ves dónde está?", finger: 0, duration: 0},
-      %{text: "Encuentra un grupo de 3 negras", note: 0, hint: "Viene después", finger: 0, duration: 0},
-      %{text: "Toca la blanca entre las 2 negras", note: 62, hint: "Dedo índice", finger: 2, duration: 1},
-      %{text: "Toca la blanca en el grupo de 3", note: 65, hint: "En el centro", finger: 0, duration: 1},
-      %{text: "Ahora encuentra el patrón más a la derecha", note: 0, hint: "¿Ves que se repite?", finger: 0, duration: 0}
+      %{text: "Encuentra un grupo de 3 negras", note: 0, hint: "Viene después del grupo de 2", finger: 0, duration: 0},
+      %{text: "Toca la blanca entre las 2 negras", note: 62, hint: "La blanca en el medio", finger: 2, duration: 1},
+      %{text: "Toca la blanca en el grupo de 3", note: 65, hint: "La blanca en el centro del grupo", finger: 0, duration: 1},
+      %{text: "Busca el patrón más a la derecha", note: 0, hint: "¿Ves cómo se repite?", finger: 0, duration: 0}
     ],
-    focus: "Identifying and reproducing visual pattern of black and white key groups",
+    focus: "Recognizing and using the fundamental 2-3 black key pattern for keyboard orientation",
     new_concepts: [
       "two_black_keys_group",
       "three_black_keys_group",
-      "pattern_repetition",
-      "spatial_sequencing",
+      "pattern_repetition_across_keyboard",
+      "spatial_landmarks",
       "white_keys_relative_to_black_groups"
     ],
-    confidence_level_target: "Recognizing pattern; sense of organization emerging",
+    confidence_level_target: "Pattern recognition clear; using pattern as navigation aid",
     cognitive_complexity: "basic",
     motor_complexity: "basic",
-    duration_minutes: 21
+    duration_minutes: 8
   },
 
   # Lesson 1.3 - Middle C Introduction
