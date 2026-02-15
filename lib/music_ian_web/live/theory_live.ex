@@ -91,23 +91,19 @@ defmodule MusicIanWeb.TheoryLive do
    end
 
    # === NEW FSM-based assignment ===
-   defp assign_fsm_state(socket, %MusicIan.Practice.FSM.LessonFSM{} = fsm) do
-     IO.puts("🔧 ASSIGN_FSM_STATE:")
-     IO.puts("   lesson_id: #{fsm.lesson_id}")
-     IO.puts("   current_state: #{fsm.current_state}")
-     IO.puts("   current_lesson: #{fsm.lesson.title}")
-     socket
-     |> assign(:lesson_active, true)
-     |> assign(:lesson_state, fsm)
-     |> assign(:current_lesson, fsm.lesson)
-     |> assign(:current_step_index, fsm.step_index)
-     |> assign(:lesson_phase, fsm.current_state)
-     |> assign(:lesson_feedback, fsm.feedback)
-     |> assign(:lesson_stats, fsm.stats)
-     |> assign(:held_notes, MapSet.new())
-     |> assign(:metronome_active, fsm.metronome_active)
-     |> update_active_notes()
-   end
+    defp assign_fsm_state(socket, %MusicIan.Practice.FSM.LessonFSM{} = fsm) do
+      socket
+      |> assign(:lesson_active, true)
+      |> assign(:lesson_state, fsm)
+      |> assign(:current_lesson, fsm.lesson)
+      |> assign(:current_step_index, fsm.step_index)
+      |> assign(:lesson_phase, fsm.current_state)
+      |> assign(:lesson_feedback, fsm.feedback)
+      |> assign(:lesson_stats, fsm.stats)
+      |> assign(:held_notes, MapSet.new())
+      |> assign(:metronome_active, fsm.metronome_active)
+      |> update_active_notes()
+    end
 
   defp maybe_start_metronome(socket, lesson) do
     if Map.get(lesson, :metronome, false) do
@@ -162,80 +158,72 @@ defmodule MusicIanWeb.TheoryLive do
     {:noreply, update(socket, :show_lessons_menu, &(!&1))}
   end
 
-  def handle_event("start_lesson", %{"id" => lesson_id}, socket) do
-    # === FSM: Load new lesson in :intro phase ===
-    IO.puts("📚 START_LESSON: lesson_id=#{lesson_id}")
-    case MusicIan.Practice.FSM.LessonFSM.new(lesson_id) do
-      {:ok, fsm_state} ->
-        IO.puts("✅ FSM created successfully for #{lesson_id}")
-        IO.puts("   FSM state: current_state=#{fsm_state.current_state}, lesson=#{fsm_state.lesson.title}")
-        {:noreply,
-         socket
-         |> assign(:show_lessons_menu, false)
-         |> assign(:show_help, false)
-         |> assign_fsm_state(fsm_state)}
+   def handle_event("start_lesson", %{"id" => lesson_id}, socket) do
+     # === FSM: Load new lesson in :intro phase ===
+     case MusicIan.Practice.FSM.LessonFSM.new(lesson_id) do
+       {:ok, fsm_state} ->
+         {:noreply,
+          socket
+          |> assign(:show_lessons_menu, false)
+          |> assign(:show_help, false)
+          |> assign_fsm_state(fsm_state)}
 
-      {:error, reason} ->
-        IO.puts("❌ Failed to create FSM: #{inspect(reason)}")
-        {:noreply, put_flash(socket, :error, "Lección no encontrada")}
-    end
-  end
+       {:error, _reason} ->
+         {:noreply, put_flash(socket, :error, "Lección no encontrada")}
+     end
+   end
 
   # === Alias: play_demo is same as start_demo (for post-demo modal) ===
   def handle_event("play_demo", _, socket) do
     handle_event("start_demo", nil, socket)
   end
 
-  def handle_event("start_demo", _, socket) do
-    if socket.assigns.lesson_active do
-      # === FSM TRANSITION: intro/post_demo → demo ===
-      fsm = socket.assigns.lesson_state
-      IO.puts("🎬 START_DEMO: current_state=#{fsm.current_state}")
-      case MusicIan.Practice.FSM.LessonFSM.transition_to_demo(fsm) do
-        {:ok, new_fsm} ->
-          IO.puts("✅ Transitioned to demo")
-          # Prepare sequence for client-side playback
-          lesson = new_fsm.lesson
-          tempo = socket.assigns.tempo
+   def handle_event("start_demo", _, socket) do
+     if socket.assigns.lesson_active do
+       # === FSM TRANSITION: intro/post_demo → demo ===
+       fsm = socket.assigns.lesson_state
+       case MusicIan.Practice.FSM.LessonFSM.transition_to_demo(fsm) do
+         {:ok, new_fsm} ->
+           # Prepare sequence for client-side playback
+           lesson = new_fsm.lesson
+           tempo = socket.assigns.tempo
 
-      # Convert steps to a format JS can play
-      # We need to map notes to a flat list of events or steps
-      # Each step in lesson.steps corresponds to a beat or note
+       # Convert steps to a format JS can play
+       # We need to map notes to a flat list of events or steps
+       # Each step in lesson.steps corresponds to a beat or note
 
-      sequence_steps =
-        Enum.with_index(lesson.steps)
-        |> Enum.map(fn {step, index} ->
-          notes = step[:notes] || [step[:note]]
-          notes = List.wrap(notes) |> Enum.reject(&is_nil/1)
-          duration_beats = step[:duration] || 1
+       sequence_steps =
+         Enum.with_index(lesson.steps)
+         |> Enum.map(fn {step, index} ->
+           notes = step[:notes] || [step[:note]]
+           notes = List.wrap(notes) |> Enum.reject(&is_nil/1)
+           duration_beats = step[:duration] || 1
 
-           %{
-             notes: notes,
-             duration_beats: duration_beats,
-             step_index: index,
-             text: step.text
-           }
-         end)
+            %{
+              notes: notes,
+              duration_beats: duration_beats,
+              step_index: index,
+              text: step.text
+            }
+          end)
 
-          # Push event to client to start the sequencer
-          {:noreply,
-           socket
-           |> assign(:lesson_state, new_fsm)
-           |> assign(:lesson_phase, :demo)
-           |> push_event("play_demo_sequence", %{
-             tempo: tempo,
-             steps: sequence_steps
-           })}
+           # Push event to client to start the sequencer
+           {:noreply,
+            socket
+            |> assign(:lesson_state, new_fsm)
+            |> assign(:lesson_phase, :demo)
+            |> push_event("play_demo_sequence", %{
+              tempo: tempo,
+              steps: sequence_steps
+            })}
 
-        {:error, reason} ->
-          IO.puts("❌ Failed to transition to demo: #{inspect(reason)}")
-          {:noreply, socket}
-      end
-    else
-      IO.puts("⚠️ START_DEMO called but lesson not active")
-      {:noreply, socket}
-    end
-  end
+         {:error, _reason} ->
+           {:noreply, socket}
+       end
+     else
+       {:noreply, socket}
+     end
+   end
 
     def handle_event("stop_demo", _, socket) do
       if socket.assigns.lesson_active do
@@ -265,32 +253,29 @@ defmodule MusicIanWeb.TheoryLive do
     {:noreply, assign(socket, :current_step_index, index)}
   end
 
-  def handle_event("demo_finished", _, socket) do
-    if socket.assigns.lesson_active do
-      # === FSM TRANSITION: demo → post_demo ===
-      # Client notifies server that demo playback finished
-      fsm = socket.assigns.lesson_state
-      IO.puts("🏁 DEMO_FINISHED: current_state=#{fsm.current_state}")
-      case MusicIan.Practice.FSM.LessonFSM.transition_to_post_demo(fsm) do
-        {:ok, new_fsm} ->
-          IO.puts("✅ Transitioned to post_demo")
-          {:noreply,
-           socket
-           |> assign(:lesson_state, new_fsm)
-           |> assign(:lesson_phase, :post_demo)
-           |> assign(:lesson_feedback, %{
-             status: :info,
-             message: "Demo completado. ¿Repetir o comenzar a practicar?"
-           })}
+   def handle_event("demo_finished", _, socket) do
+     if socket.assigns.lesson_active do
+       # === FSM TRANSITION: demo → post_demo ===
+       # Client notifies server that demo playback finished
+       fsm = socket.assigns.lesson_state
+       case MusicIan.Practice.FSM.LessonFSM.transition_to_post_demo(fsm) do
+         {:ok, new_fsm} ->
+           {:noreply,
+            socket
+            |> assign(:lesson_state, new_fsm)
+            |> assign(:lesson_phase, :post_demo)
+            |> assign(:lesson_feedback, %{
+              status: :info,
+              message: "Demo completado. ¿Repetir o comenzar a practicar?"
+            })}
 
-        {:error, reason} ->
-          IO.puts("❌ Failed to transition to post_demo: #{inspect(reason)}")
-          {:noreply, socket}
-      end
-    else
-      {:noreply, socket}
-    end
-  end
+         {:error, _reason} ->
+           {:noreply, socket}
+       end
+     else
+       {:noreply, socket}
+     end
+   end
 
   # REMOVED: handle_info(:next_demo_step) and related demo loop functions
   # as they are now handled client-side.
@@ -570,13 +555,13 @@ defmodule MusicIanWeb.TheoryLive do
       first_lesson = List.first(MusicIan.Curriculum.list_lessons())
 
       if first_lesson do
-        case MusicIan.Practice.LessonEngine.new(first_lesson.id) do
-          {:ok, engine_state} ->
+        case MusicIan.Practice.FSM.LessonFSM.new(first_lesson.id) do
+          {:ok, fsm_state} ->
             {:noreply,
              socket
              |> assign(:show_lessons_menu, false)
              |> assign(:show_help, false)
-             |> assign_lesson_state(engine_state)}
+             |> assign(:lesson_state, fsm_state)}
 
           _ ->
             {:noreply, socket}
@@ -585,16 +570,27 @@ defmodule MusicIanWeb.TheoryLive do
         {:noreply, socket}
       end
     else
-      # Context-aware actions based on Lesson Engine state
-      case state.phase do
+      # Context-aware actions based on FSM state
+      case state.current_state do
         :intro ->
-          new_state = MusicIan.Practice.LessonEngine.start_practice(state)
-          {:noreply, assign_lesson_state(socket, new_state)}
+          # From intro, C8 starts practice countdown
+          case MusicIan.Practice.FSM.LessonFSM.transition_to_countdown(state) do
+            {:ok, new_fsm} ->
+              {:noreply, assign(socket, :lesson_state, new_fsm)}
+
+            _ ->
+              {:noreply, socket}
+          end
 
         :demo ->
           # If in demo phase, pressing C8 starts practice
-          new_state = MusicIan.Practice.LessonEngine.start_practice(state)
-          {:noreply, assign_lesson_state(socket, new_state)}
+          case MusicIan.Practice.FSM.LessonFSM.transition_to_countdown(state) do
+            {:ok, new_fsm} ->
+              {:noreply, assign(socket, :lesson_state, new_fsm)}
+
+            _ ->
+              {:noreply, socket}
+          end
 
         :active ->
           # If in active phase, pressing C8 does nothing
@@ -602,14 +598,20 @@ defmodule MusicIanWeb.TheoryLive do
           {:noreply, socket}
 
         :summary ->
-          if MusicIan.Practice.LessonEngine.passed?(state) do
+          # Check if passed (80% accuracy)
+          correct = state.stats.correct || 0
+          errors = state.stats.errors || 0
+          total = correct + errors
+          accuracy = if total > 0, do: correct / total, else: 0.0
+
+          if accuracy >= 0.8 do
             # Passed -> Next Lesson
             next_id = MusicIan.Curriculum.get_next_lesson_id(state.lesson_id)
 
             if next_id do
-              case MusicIan.Practice.LessonEngine.new(next_id) do
-                {:ok, next_state} ->
-                  {:noreply, assign_lesson_state(socket, next_state)}
+              case MusicIan.Practice.FSM.LessonFSM.new(next_id) do
+                {:ok, next_fsm} ->
+                  {:noreply, assign(socket, :lesson_state, next_fsm)}
 
                 _ ->
                   {:noreply, socket}
@@ -618,13 +620,18 @@ defmodule MusicIanWeb.TheoryLive do
               # Finished course
               {:noreply,
                socket
-               |> assign_lesson_state(nil)
+               |> assign(:lesson_state, nil)
                |> put_flash(:info, "¡Has completado todo el curso!")}
             end
           else
-            # Failed -> Retry
-            new_state = MusicIan.Practice.LessonEngine.retry(state)
-            {:noreply, assign_lesson_state(socket, new_state)}
+            # Failed -> Retry: reset to intro for same lesson
+            case MusicIan.Practice.FSM.LessonFSM.new(state.lesson_id) do
+              {:ok, retry_fsm} ->
+                {:noreply, assign(socket, :lesson_state, retry_fsm)}
+
+              _ ->
+                {:noreply, socket}
+            end
           end
 
         _ ->
@@ -650,18 +657,16 @@ defmodule MusicIanWeb.TheoryLive do
    # Countdown: 10 → 0 seconds
    # Metronome is already active (started in begin_practice)
    # At 3,2,1: show "Listo, Set, ¡Vamos!" with beeps
-    def handle_info(:countdown_tick, socket) do
-      countdown = socket.assigns[:countdown] || 0
-      fsm = socket.assigns.lesson_state
-      IO.puts("⏱️  COUNTDOWN_TICK: countdown=#{countdown}, current_state=#{fsm.current_state}")
+     def handle_info(:countdown_tick, socket) do
+       countdown = socket.assigns[:countdown] || 0
+       fsm = socket.assigns.lesson_state
 
-      case MusicIan.Practice.FSM.LessonFSM.handle_countdown_tick(fsm) do
-        {:countdown_tick_10, new_fsm} ->
-          # COUNTDOWN TICK 10: Activate metronome
-          metronome_enabled = Map.get(new_fsm.lesson, :metronome, false)
-          IO.puts("🔔 COUNTDOWN == 10: metronome_enabled=#{metronome_enabled}, sending toggle_metronome")
-          
-          Process.send_after(self(), :countdown_tick, 1000)
+       case MusicIan.Practice.FSM.LessonFSM.handle_countdown_tick(fsm) do
+         {:countdown_tick_10, new_fsm} ->
+           # COUNTDOWN TICK 10: Activate metronome
+           metronome_enabled = Map.get(new_fsm.lesson, :metronome, false)
+           
+           Process.send_after(self(), :countdown_tick, 1000)
           {:noreply,
            socket
            |> assign(:lesson_state, new_fsm)

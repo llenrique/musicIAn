@@ -222,74 +222,50 @@ defmodule MusicIan.Practice.LessonEngine do
     current_step_text = current_step[:text] || "???"
 
     # Normalize target notes
-    target_notes = current_step[:notes] || [current_step[:note]]
-    target_set = MapSet.new(target_notes)
-    held_set = MapSet.new(held_notes)
+     target_notes = current_step[:notes] || [current_step[:note]]
+     target_set = MapSet.new(target_notes)
+     held_set = MapSet.new(held_notes)
 
-    # === DEBUG LOGGING ===
-    IO.puts("")
-    IO.puts("═════════════════════════════════════════════════════════════════")
-    IO.inspect({:validation_state, 
-      step_index: state.step_index,
-      step_text: current_step_text,
-      target_notes: target_notes,
-      held_notes: held_notes,
-      latest_note: latest_note,
-      held_set: held_set,
-      target_set: target_set
-    }, label: "🔍 VALIDATING STEP #{state.step_index}: #{current_step_text}")
+     # Check if all target notes are held
+     all_target_notes_held = MapSet.subset?(target_set, held_set)
+     
+     # Check for extra notes (strict mode: no extra notes allowed)
+     has_extra_notes = not MapSet.equal?(target_set, held_set)
 
-    # Check if all target notes are held
-    all_target_notes_held = MapSet.subset?(target_set, held_set)
-    
-    # Check for extra notes (strict mode: no extra notes allowed)
-    has_extra_notes = not MapSet.equal?(target_set, held_set)
-
-    IO.inspect({:validation_checks, 
-      all_target_notes_held: all_target_notes_held,
-      has_extra_notes: has_extra_notes
-    }, label: "✓ CHECKS")
-
-    if all_target_notes_held and not has_extra_notes do
-      # ✅ Perfect: All required notes, no extra notes
-      IO.puts("✅ VALIDATION PASSED - CALLING handle_success")
-      handle_success(state, timing_info)
-    else
-      # ❌ Error conditions:
-      # 1. Latest note is not in target set
-      # 2. Extra notes are being held (strict validation)
-      
-      if not MapSet.member?(target_set, latest_note) do
-        # Wrong note played
-        IO.puts("❌ WRONG NOTE - latest_note not in target_set")
-        handle_error(state, latest_note, target_notes, timing_info)
-      else
-        if has_extra_notes do
-          # Extra notes held (user building chord messily)
-          # Only error if extra notes are WAY off (more than 2 semitones away)
-          extra_notes = MapSet.difference(held_set, target_set)
-          IO.inspect(extra_notes, label: "⚠️  EXTRA NOTES")
-          
-          wrong_extra = Enum.any?(extra_notes, fn note -> 
-            # Check if extra note is at least 2 semitones away from any target note
-            Enum.all?(target_notes, fn target -> abs(note - target) > 1 end)
-          end)
-          
-          if wrong_extra do
-            IO.puts("❌ EXTRA NOTES TOO FAR - calling handle_error")
-            handle_error(state, latest_note, target_notes, timing_info)
-          else
-            # Extra notes are close/adjacent - user building slowly. Wait.
-            IO.puts("⏳ EXTRA NOTES OK - ignoring (adjacent)")
-            {:ignore, state}
-          end
-        else
-          # It's a correct note, but the chord is incomplete. Wait.
-          IO.puts("⏳ CORRECT NOTE - chord incomplete, ignoring")
-          {:ignore, state}
-        end
-      end
-    end
+     if all_target_notes_held and not has_extra_notes do
+       # ✅ Perfect: All required notes, no extra notes
+       handle_success(state, timing_info)
+     else
+       # ❌ Error conditions:
+       # 1. Latest note is not in target set
+       # 2. Extra notes are being held (strict validation)
+       
+       if not MapSet.member?(target_set, latest_note) do
+         # Wrong note played
+         handle_error(state, latest_note, target_notes, timing_info)
+       else
+         if has_extra_notes do
+           # Extra notes held (user building chord messily)
+           # Only error if extra notes are WAY off (more than 2 semitones away)
+           extra_notes = MapSet.difference(held_set, target_set)
+           
+           wrong_extra = Enum.any?(extra_notes, fn note -> 
+             # Check if extra note is at least 2 semitones away from any target note
+             Enum.all?(target_notes, fn target -> abs(note - target) > 1 end)
+           end)
+           
+           if wrong_extra do
+             handle_error(state, latest_note, target_notes, timing_info)
+           else
+             # Extra notes are close/adjacent - user building slowly. Wait.
+             {:ignore, state}
+           end
+         else
+           # It's a correct note, but the chord is incomplete. Wait.
+           {:ignore, state}
+         end
+       end
+     end
   end
 
   # Catch-all for inactive phases (ignore validation when not in :active phase)
@@ -299,17 +275,13 @@ defmodule MusicIan.Practice.LessonEngine do
 
   # --- Private Helpers ---
 
-  defp handle_success(state, timing_info \\ nil) do
-    current_step = Enum.at(state.lesson.steps, state.step_index)
-    current_step_text = current_step[:text] || "???"
-    
-    IO.puts("✅ SUCCESS on STEP #{state.step_index}: #{current_step_text}")
-    
-    new_stats = Map.update!(state.stats, :correct, &(&1 + 1))
-    next_index = state.step_index + 1
-    total_steps = length(state.lesson.steps)
-    
-    IO.puts("   → Incrementing step_index from #{state.step_index} to #{next_index}")
+   defp handle_success(state, timing_info \\ nil) do
+     current_step = Enum.at(state.lesson.steps, state.step_index)
+     current_step_text = current_step[:text] || "???"
+     
+     new_stats = Map.update!(state.stats, :correct, &(&1 + 1))
+     next_index = state.step_index + 1
+     total_steps = length(state.lesson.steps)
 
     # === TIMING VALIDATION ===
     # Check if note was played on time
@@ -365,29 +337,27 @@ defmodule MusicIan.Practice.LessonEngine do
       new_state = %{
         state
         | stats: new_stats,
-          step_index: next_index,
-          step_analysis: new_step_analysis,
-          feedback: %{status: :success, message: message}
-      }
+           step_index: next_index,
+           step_analysis: new_step_analysis,
+           feedback: %{status: :success, message: message}
+       }
 
-      IO.puts("   → Continuing (step #{state.step_index} < last step #{last_step_index})")
-      {:continue, new_state}
-    else
-      # Lesson Completed - we just completed the last step
-      new_state = %{
-        state
-        | stats: new_stats,
-          # Keep index at end to show completion state
-          step_index: next_index,
-          step_analysis: new_step_analysis,
-          phase: :summary,
-          completed?: true,
-          feedback: %{status: :success, message: "¡Lección Completada!"}
-      }
+       {:continue, new_state}
+     else
+       # Lesson Completed - we just completed the last step
+       new_state = %{
+         state
+         | stats: new_stats,
+           # Keep index at end to show completion state
+           step_index: next_index,
+           step_analysis: new_step_analysis,
+           phase: :summary,
+           completed?: true,
+           feedback: %{status: :success, message: "¡Lección Completada!"}
+       }
 
-      IO.puts("   → Completed (step #{state.step_index} >= last step #{last_step_index})")
-      {:completed, new_state}
-    end
+       {:completed, new_state}
+     end
   end
 
   defp handle_error(state, played_midi, target_note, timing_info \\ nil) do
