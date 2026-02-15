@@ -282,10 +282,15 @@ defmodule MusicIanWeb.TheoryLive do
   # as they are now handled client-side.
 
     def handle_event("begin_practice", _, socket) do
+      IO.puts("📍 BEGIN_PRACTICE called")
+      IO.puts("   lesson_active: #{socket.assigns.lesson_active}")
+      IO.puts("   lesson_state: #{inspect(socket.assigns.lesson_state)}")
+      
       if socket.assigns.lesson_active do
          # === FSM TRANSITION: intro/post_demo → countdown ===
          case MusicIan.Practice.FSM.LessonFSM.transition_to_countdown(socket.assigns.lesson_state) do
            {:ok, new_fsm_state} ->
+             IO.puts("✅ Successfully transitioned to countdown")
              # Start countdown (10 seconds) - first tick will activate metronome
              Process.send_after(self(), :countdown_tick, 1000)
 
@@ -298,10 +303,12 @@ defmodule MusicIanWeb.TheoryLive do
               |> assign(:countdown_stage, :counting)
               |> assign(:metronome_active, false)}
 
-           {:error, _} ->
+           {:error, error} ->
+             IO.puts("❌ Failed to transition to countdown: #{inspect(error)}")
              {:noreply, socket}
          end
        else
+         IO.puts("⚠️ BEGIN_PRACTICE: lesson not active")
          {:noreply, socket}
        end
      end
@@ -551,26 +558,30 @@ defmodule MusicIanWeb.TheoryLive do
   defp handle_c8_action(socket) do
     state = socket.assigns.lesson_state
 
-    # Global C8 action when no lesson is active
-     if !socket.assigns.lesson_active do
-       # Start first lesson dynamically
-       first_lesson = List.first(MusicIan.Curriculum.list_lessons())
+     # Global C8 action when no lesson is active
+      if !socket.assigns.lesson_active do
+        # Start first lesson dynamically
+        first_lesson = List.first(MusicIan.Curriculum.list_lessons())
 
-       if first_lesson do
-         case MusicIan.Practice.FSM.LessonFSM.new(first_lesson.id) do
-           {:ok, fsm_state} ->
-             {:noreply,
-              socket
-              |> assign(:show_lessons_menu, false)
-              |> assign(:show_help, false)
-              |> assign_fsm_state(fsm_state)}
+        if first_lesson do
+          case MusicIan.Practice.FSM.LessonFSM.new(first_lesson.id) do
+            {:ok, fsm_state} ->
+              IO.puts("✅ C8 PRESSED: Created FSM for lesson #{first_lesson.id}")
+              IO.puts("   FSM state: current_state=#{fsm_state.current_state}, lesson=#{fsm_state.lesson.title}")
+              {:noreply,
+               socket
+               |> assign(:show_lessons_menu, false)
+               |> assign(:show_help, false)
+               |> assign_fsm_state(fsm_state)}
 
-           _ ->
-             {:noreply, socket}
-         end
-       else
-         {:noreply, socket}
-       end
+            error ->
+              IO.puts("❌ C8 PRESSED: Failed to create FSM - #{inspect(error)}")
+              {:noreply, socket}
+          end
+        else
+          IO.puts("⚠️ C8 PRESSED: No lessons found")
+          {:noreply, socket}
+        end
     else
       # Context-aware actions based on FSM state
       case state.current_state do
