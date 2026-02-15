@@ -45,6 +45,7 @@ defmodule MusicIanWeb.TheoryLive do
       |> assign(:scale_info_enriched, nil)
       # Lesson State
       |> assign(:lesson_active, false)
+      |> assign(:show_lessons_menu, false)
       # Holds the LessonEngine struct
       |> assign(:lesson_state, nil)
       |> assign(:current_lesson, nil)
@@ -153,21 +154,26 @@ defmodule MusicIanWeb.TheoryLive do
     end
   end
 
-   def handle_event("start_lesson", %{"id" => lesson_id}, socket) do
-     # === FSM: Load new lesson in :intro phase ===
-     case MusicIan.Practice.FSM.LessonFSM.new(lesson_id) do
-       {:ok, fsm_state} ->
-         {:noreply,
-          socket
-          |> assign(:show_help, false)
-          |> assign_fsm_state(fsm_state)}
-
-       {:error, _reason} ->
-         {:noreply, put_flash(socket, :error, "Lección no encontrada")}
-     end
+   def handle_event("toggle_lessons_menu", _, socket) do
+     {:noreply, update(socket, :show_lessons_menu, &(!&1))}
    end
 
-  # === Alias: play_demo is same as start_demo (for post-demo modal) ===
+    def handle_event("start_lesson", %{"id" => lesson_id}, socket) do
+      # === FSM: Load new lesson in :intro phase ===
+      case MusicIan.Practice.FSM.LessonFSM.new(lesson_id) do
+        {:ok, fsm_state} ->
+          {:noreply,
+           socket
+           |> assign(:show_help, false)
+           |> assign(:show_lessons_menu, false)
+           |> assign_fsm_state(fsm_state)}
+
+        {:error, _reason} ->
+          {:noreply, put_flash(socket, :error, "Lección no encontrada")}
+      end
+    end
+
+   # === Alias: play_demo is same as start_demo (for post-demo modal) ===
   def handle_event("play_demo", _, socket) do
     handle_event("start_demo", nil, socket)
   end
@@ -935,8 +941,8 @@ defmodule MusicIanWeb.TheoryLive do
         <div class="flex items-center gap-4 relative">
            <!-- Lesson Controls -->
            <%= if !@lesson_active do %>
-             <.link
-               navigate={~p"/modules"}
+             <button
+               phx-click="toggle_lessons_menu"
                class="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded transition-colors"
              >
                <svg
@@ -954,7 +960,45 @@ defmodule MusicIanWeb.TheoryLive do
                  />
                </svg>
                Lecciones
-              </.link>
+               <svg
+                 xmlns="http://www.w3.org/2000/svg"
+                 fill="none"
+                 viewBox="0 0 24 24"
+                 stroke-width="2"
+                 stroke="currentColor"
+                 class="w-3 h-3 ml-1"
+               >
+                 <path
+                   stroke-linecap="round"
+                   stroke-linejoin="round"
+                   d="M19.5 8.25l-7.5 7.5-7.5-7.5"
+                 />
+               </svg>
+             </button>
+
+             <%= if @show_lessons_menu do %>
+               <div class="absolute top-full left-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-slate-200 z-50 overflow-hidden">
+                 <div class="bg-slate-50 px-4 py-2 border-b border-slate-100 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                   Selecciona una Lección
+                 </div>
+                 <div class="max-h-96 overflow-y-auto">
+                   <%= for lesson <- MusicIan.Curriculum.list_lessons() do %>
+                     <button
+                       phx-click="start_lesson"
+                       phx-value-id={lesson.id}
+                       class="w-full px-4 py-3 text-left hover:bg-slate-50 border-b border-slate-100 transition-colors group"
+                     >
+                       <div class="font-bold text-slate-800 group-hover:text-emerald-700">
+                         <%= lesson.title %>
+                       </div>
+                       <div class="text-xs text-slate-500 mt-0.5"><%= lesson.description %></div>
+                     </button>
+                   <% end %>
+                 </div>
+               </div>
+               <!-- Click outside overlay -->
+               <div class="fixed inset-0 z-40" phx-click="toggle_lessons_menu"></div>
+             <% end %>
            <% else %>
             <div class="flex items-center gap-3 bg-emerald-50 px-3 py-1 rounded border border-emerald-100">
               <span class="text-xs font-bold text-emerald-700 uppercase tracking-wider">
