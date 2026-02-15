@@ -202,20 +202,27 @@ defmodule MusicIanWeb.TheoryLive do
        # We need to map notes to a flat list of events or steps
        # Each step in lesson.steps corresponds to a beat or note
 
-       sequence_steps =
-         Enum.with_index(lesson.steps)
-         |> Enum.map(fn {step, index} ->
-           notes = step[:notes] || [step[:note]]
-            notes = List.wrap(notes) |> Enum.reject(&(is_nil(&1) or &1 == 0))
-           duration_beats = step[:duration] || 1
+        sequence_steps =
+          Enum.with_index(lesson.steps)
+          |> Enum.map(fn {step, index} ->
+            # Extract note(s): step has 'note' (singular) field
+            note_value = step[:note]
+            notes = 
+              if is_nil(note_value) or note_value == 0 do
+                []  # Observation steps have no notes to play
+              else
+                [note_value]  # Single note per step
+              end
+            
+            duration_beats = step[:duration] || 1
 
-            %{
-              notes: notes,
-              duration_beats: duration_beats,
-              step_index: index,
-              text: step.text
-            }
-          end)
+             %{
+               notes: notes,
+               duration_beats: duration_beats,
+               step_index: index,
+               text: step[:text] || "Step #{index + 1}"
+             }
+           end)
 
            # Push event to client to start the sequencer
            {:noreply,
@@ -744,50 +751,63 @@ defmodule MusicIanWeb.TheoryLive do
     if socket.assigns.lesson_active do
       # --- LESSON MODE ---
       # Show the full melody/score (Sequence of steps)
-      vexflow_notes =
-        Enum.map(socket.assigns.current_lesson.steps, fn step ->
-          midis = step[:notes] || [step[:note]]
-          midis = List.wrap(midis) |> Enum.reject(&is_nil/1)
+       vexflow_notes =
+         Enum.map(socket.assigns.current_lesson.steps, fn step ->
+           # Extract note: reject nil and 0 (observation steps)
+           note_value = step[:note]
+           midis = 
+             if is_nil(note_value) or note_value == 0 do
+               []
+             else
+               [note_value]
+             end
 
-          notes_info =
-            Enum.map(midis, fn midi ->
-              n = MusicIan.MusicCore.Note.new(midi)
-              {base, acc} = MusicIan.MusicCore.Theory.parse_note_name(n.name)
-              acc = if acc != "", do: acc, else: nil
+           notes_info =
+             Enum.map(midis, fn midi ->
+               n = MusicIan.MusicCore.Note.new(midi)
+               {base, acc} = MusicIan.MusicCore.Theory.parse_note_name(n.name)
+               acc = if acc != "", do: acc, else: nil
 
-              %{
-                key: "#{String.downcase(base)}/#{n.octave}",
-                accidental: acc,
-                midi: midi,
-                clef: if(midi >= 60, do: "treble", else: "bass")
-              }
-            end)
+               %{
+                 key: "#{String.downcase(base)}/#{n.octave}",
+                 accidental: acc,
+                 midi: midi,
+                 clef: if(midi >= 60, do: "treble", else: "bass")
+               }
+             end)
 
-          # Map duration to VexFlow codes
-          dur_val = step[:duration] || 1
+           # Map duration to VexFlow codes
+           dur_val = step[:duration] || 1
 
-          duration_char =
-            case dur_val do
-              4 -> "w"
-              2 -> "h"
-              1 -> "q"
-              0.5 -> "8"
-              _ -> "q"
-            end
+           duration_char =
+             case dur_val do
+               4 -> "w"      # whole note
+               2 -> "h"      # half note
+               1 -> "q"      # quarter note (default)
+               0.5 -> "8"    # eighth note
+               0 -> "q"      # observation steps default to quarter
+               _ -> "q"      # default to quarter
+             end
 
-          %{
-            notes: notes_info,
-            duration: duration_char
-          }
-        end)
+           %{
+             notes: notes_info,
+             duration: duration_char
+           }
+         end)
 
-      # For keyboard highlights, we still want the set of all used notes
-      lesson_midis =
-        socket.assigns.current_lesson.steps
-        |> Enum.flat_map(fn step -> step[:notes] || [step[:note]] end)
-        |> Enum.reject(&is_nil/1)
-        |> Enum.uniq()
-        |> Enum.sort()
+       # For keyboard highlights, we still want the set of all used notes
+       lesson_midis =
+         socket.assigns.current_lesson.steps
+         |> Enum.flat_map(fn step -> 
+           note_val = step[:note]
+           if is_nil(note_val) or note_val == 0 do
+             []
+           else
+             [note_val]
+           end
+         end)
+         |> Enum.uniq()
+         |> Enum.sort()
 
       socket
       |> assign(:active_notes, lesson_midis)

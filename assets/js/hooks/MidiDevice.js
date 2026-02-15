@@ -786,15 +786,17 @@ const MidiDevice = {
       // 1. Update UI (highlight notes on staff/keyboard)
       this.pushEvent("demo_step_update", { step_index: step.step_index });
       
-      // 2. Play Notes
-      step.notes.forEach(midi => {
-        this.sendMidiOut(midi, (stepDurationMs / 1000) * 0.9);
-        // Trigger visual effect locally
-        this.triggerLocalEffects(midi, 80, true, "demo-player");
-        setTimeout(() => {
-            this.triggerLocalEffects(midi, 0, false, "demo-player");
-        }, (stepDurationMs * 0.9));
-      });
+       // 2. Play Notes (if any - observation steps have no notes)
+       if (step.notes && step.notes.length > 0) {
+         step.notes.forEach(midi => {
+           this.sendMidiOut(midi, (stepDurationMs / 1000) * 0.9);
+           // Trigger visual effect locally
+           this.triggerLocalEffects(midi, 80, true, "demo-player");
+           setTimeout(() => {
+               this.triggerLocalEffects(midi, 0, false, "demo-player");
+           }, (stepDurationMs * 0.9));
+         });
+       }
 
       // 3. Play Metronome Clicks
       // We need to play a click at the start, and if duration > 1 beat, play subsequent clicks
