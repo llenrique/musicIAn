@@ -451,15 +451,20 @@ defmodule MusicIanWeb.TheoryLive do
         end
 
       if socket.assigns.lesson_active && socket.assigns.lesson_phase == :active do
-        # Use the Pure Functional Core to validate the note
+        # Use FSM for validation
+        fsm = socket.assigns.lesson_state
+        
+        # TODO: Implement FSM validation
+        # For now, convert FSM to LessonEngine for backward compatibility
         lesson_state = %MusicIan.Practice.LessonEngine{
-          lesson_id: socket.assigns.current_lesson.id,
-          lesson: socket.assigns.current_lesson,
-          phase: socket.assigns.lesson_phase,
-          step_index: socket.assigns.current_step_index,
-          stats: socket.assigns.lesson_stats,
-          feedback: socket.assigns.lesson_feedback,
-          completed?: false
+          lesson_id: fsm.lesson_id,
+          lesson: fsm.lesson,
+          phase: fsm.current_state,
+          step_index: fsm.step_index,
+          stats: fsm.stats,
+          feedback: fsm.feedback,
+          completed?: false,
+          step_analysis: fsm.step_analysis
         }
 
         # Convert held_notes MapSet to List for validation
@@ -483,27 +488,41 @@ defmodule MusicIanWeb.TheoryLive do
               # IMPORTANT: Update internal state
               |> assign(:lesson_state, new_state)}
 
-           {:completed, new_state} ->
-              # === NEW: Save to DB with step-by-step analysis ===
-              # Includes: stats, timing analysis, note accuracy, etc.
-              MusicIan.Practice.Helper.LessonHelper.save_lesson_completion(
-                new_state.lesson_id,
-                new_state.stats,
-                new_state.step_analysis
-              )
+            {:completed, new_state} ->
+               # === FSM TRANSITION: active → summary ===
+               fsm = socket.assigns.lesson_state
+               case MusicIan.Practice.FSM.LessonFSM.transition_to_summary(fsm) do
+                 {:ok, new_fsm} ->
+                   # === NEW: Save to DB with step-by-step analysis ===
+                   # Includes: stats, timing analysis, note accuracy, etc.
+                   MusicIan.Practice.Helper.LessonHelper.save_lesson_completion(
+                     new_state.lesson_id,
+                     new_state.stats,
+                     new_state.step_analysis
+                   )
 
-              # === METRONOME: Deactivate when practice completes ===
-              {:noreply,
-               socket
-               |> assign(:lesson_phase, :summary)
-               |> assign(:current_step_index, new_state.step_index)
-               |> assign(:lesson_stats, new_state.stats)
-               |> assign(:lesson_feedback, new_state.feedback)
-               |> assign(:held_notes, MapSet.new())
-               |> assign(:metronome_active, false)
-               |> push_event("toggle_metronome", %{active: false, bpm: socket.assigns.tempo})
-               # IMPORTANT: Update internal state
-               |> assign(:lesson_state, new_state)}
+                   # Update FSM with completed stats
+                   updated_fsm = %{new_fsm | 
+                     stats: new_state.stats,
+                     step_analysis: new_state.step_analysis,
+                     feedback: new_state.feedback
+                   }
+
+                   # === METRONOME: Deactivate when practice completes ===
+                   {:noreply,
+                    socket
+                    |> assign(:lesson_state, updated_fsm)
+                    |> assign(:lesson_phase, :summary)
+                    |> assign(:current_step_index, new_state.step_index)
+                    |> assign(:lesson_stats, new_state.stats)
+                    |> assign(:lesson_feedback, new_state.feedback)
+                    |> assign(:held_notes, MapSet.new())
+                    |> assign(:metronome_active, false)
+                    |> push_event("toggle_metronome", %{active: false, bpm: socket.assigns.tempo})}
+
+                 {:error, _} ->
+                   {:noreply, socket}
+               end
 
           {:error, new_state} ->
             {:noreply,
