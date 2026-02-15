@@ -639,11 +639,13 @@ defmodule MusicIanWeb.TheoryLive do
     def handle_info(:countdown_tick, socket) do
       countdown = socket.assigns[:countdown] || 0
       fsm = socket.assigns.lesson_state
+      IO.puts("⏱️  COUNTDOWN_TICK: countdown=#{countdown}, current_state=#{fsm.current_state}")
 
       case MusicIan.Practice.FSM.LessonFSM.handle_countdown_tick(fsm) do
         {:countdown_tick_10, new_fsm} ->
           # COUNTDOWN TICK 10: Activate metronome
           metronome_enabled = Map.get(new_fsm.lesson, :metronome, false)
+          IO.puts("🔔 COUNTDOWN == 10: metronome_enabled=#{metronome_enabled}, sending toggle_metronome")
           
           Process.send_after(self(), :countdown_tick, 1000)
           {:noreply,
@@ -651,6 +653,7 @@ defmodule MusicIanWeb.TheoryLive do
            |> assign(:lesson_state, new_fsm)
            |> assign(:countdown, 9)
            |> assign(:countdown_stage, :counting)
+           |> assign(:metronome_active, metronome_enabled)
            |> push_event("toggle_metronome", %{active: metronome_enabled, bpm: socket.assigns.tempo})}
 
         {:countdown_tick, new_fsm} when countdown > 3 ->
