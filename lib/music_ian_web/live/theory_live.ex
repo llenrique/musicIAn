@@ -250,30 +250,30 @@ defmodule MusicIanWeb.TheoryLive do
   # REMOVED: handle_info(:next_demo_step) and related demo loop functions
   # as they are now handled client-side.
 
-   def handle_event("begin_practice", _, socket) do
-     if socket.assigns.lesson_active do
-       # === SIMPLIFIED: Begin practice with countdown ===
-       lesson = socket.assigns.current_lesson
-       metronome_enabled = Map.get(lesson, :metronome, false)
+    def handle_event("begin_practice", _, socket) do
+      if socket.assigns.lesson_active do
+        # === SIMPLIFIED: Begin practice with countdown ===
+        lesson = socket.assigns.current_lesson
+        metronome_enabled = Map.get(lesson, :metronome, false)
 
-       # Reset lesson state for practice
-       new_state = MusicIan.Practice.LessonEngine.start_practice(socket.assigns.lesson_state)
+        # Reset lesson state for practice
+        new_state = MusicIan.Practice.LessonEngine.start_practice(socket.assigns.lesson_state)
 
-       # Store metronome_enabled for countdown to access
-       # Start countdown (10 seconds) - first tick will activate metronome
-       Process.send_after(self(), :countdown_tick, 1000)
+        # Store metronome_enabled for countdown to access
+        # Start countdown (10 seconds) - first tick will activate metronome
+        Process.send_after(self(), :countdown_tick, 1000)
 
-       {:noreply,
-        socket
-        |> assign(:lesson_phase, :countdown)
-        |> assign(:countdown, 10)
-        |> assign(:countdown_stage, :counting)
-        |> assign(:metronome_active, metronome_enabled)
-        |> assign(:lesson_state, new_state)}
-     else
-       {:noreply, socket}
-     end
-   end
+        {:noreply,
+         socket
+         |> assign(:lesson_phase, :countdown)
+         |> assign(:countdown, 10)
+         |> assign(:countdown_stage, :counting)
+         |> assign(:metronome_active, metronome_enabled)
+         |> assign(:lesson_state, new_state)}
+      else
+        {:noreply, socket}
+      end
+    end
 
   def handle_event("stop_lesson", _, socket) do
     {:noreply, assign_lesson_state(socket, nil)}
@@ -573,29 +573,29 @@ defmodule MusicIanWeb.TheoryLive do
    # Countdown: 10 → 0 seconds
    # Metronome is already active (started in begin_practice)
    # At 3,2,1: show "Listo, Set, ¡Vamos!" with beeps
-   def handle_info(:countdown_tick, socket) do
-     countdown = socket.assigns[:countdown] || 0
+    def handle_info(:countdown_tick, socket) do
+      countdown = socket.assigns[:countdown] || 0
 
-     if countdown > 3 do
-       # === STAGE 1: Normal countdown (10 → 4) ===
-       # Metrónomo ACTIVO - Usuario escucha y se adapta al ritmo
-       metronome_enabled = socket.assigns.metronome_active
-       
-       # === CRITICAL: Send metronome activation on FIRST tick (countdown == 10) ===
-       socket_with_metronome =
-         if countdown == 10 do
-           # FIRST COUNTDOWN TICK - Activate metronome NOW
-           socket
-           |> push_event("toggle_metronome", %{active: metronome_enabled, bpm: socket.assigns.tempo})
-         else
-           socket
-         end
+      if countdown > 3 do
+        # === STAGE 1: Normal countdown (10 → 4) ===
+        # Metrónomo ACTIVO - Usuario escucha y se adapta al ritmo
+        metronome_enabled = socket.assigns.metronome_active
+        
+        # === CRITICAL: Send metronome activation on FIRST tick (countdown == 10) ===
+        socket_with_metronome =
+          if countdown == 10 do
+            # FIRST COUNTDOWN TICK - Activate metronome NOW
+            socket
+            |> push_event("toggle_metronome", %{active: metronome_enabled, bpm: socket.assigns.tempo})
+          else
+            socket
+          end
 
-       Process.send_after(self(), :countdown_tick, 1000)
-       {:noreply, 
-        socket_with_metronome
-        |> assign(:countdown, countdown - 1)
-        |> assign(:countdown_stage, :counting)}
+        Process.send_after(self(), :countdown_tick, 1000)
+        {:noreply, 
+         socket_with_metronome
+         |> assign(:countdown, countdown - 1)
+         |> assign(:countdown_stage, :counting)}
      else
        if countdown > 0 do
          # === STAGE 2: "Listo, Set, ¡Vamos!" (3 → 1) ===
