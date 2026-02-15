@@ -95,55 +95,119 @@ defmodule MusicIan.Practice.LessonEngine do
   Validates the timing of a note against the expected beat.
   Expects timing information from the client (JavaScript).
 
-  timing_info: %{status: 'on-time'|'early'|'late', deviation: number, severity: 'ok'|'warning'|'error'}
-  """
-  def validate_timing(timing_info) do
-    case timing_info do
-      %{"timingSeverity" => "error"} ->
-        # === HARD TIMING ERROR: Note too far from beat ===
-        {:error, format_timing_error(timing_info)}
+   timing_info: %{
+     notePlayedAtMs: number,
+     expectedBeat: number,
+     metronomeStartTimeMs: number,
+     beatDurationMs: number,
+     noteRelativeTime: number,
+     toleranceMs: number,
+     timingStatus: 'on-time'|'early'|'late'
+   }
+   """
+   def validate_timing(timing_info) do
+     # Extract raw timing data from client
+     note_played_at = Map.get(timing_info, "notePlayedAtMs", 0)
+     expected_beat = Map.get(timing_info, "expectedBeat")
+     metronome_start = Map.get(timing_info, "metronomeStartTimeMs")
+     beat_duration = Map.get(timing_info, "beatDurationMs", 500)
+     note_relative_time = Map.get(timing_info, "noteRelativeTime", 0)
+     tolerance_ms = Map.get(timing_info, "toleranceMs", 150)
+     
+     # If we don't have the raw timing data, fall back to pre-calculated status
+     if is_nil(metronome_start) or is_nil(expected_beat) or is_nil(beat_duration) do
+       validate_timing_fallback(timing_info)
+     else
+       # === SERVER-SIDE TIMING ANALYSIS ===
+       # Calculate where the note was relative to expected beat
+       expected_beat_time_ms = expected_beat * beat_duration
+       deviation_ms = note_relative_time - expected_beat_time_ms
+       
+       # Determine if early, late, or on-time
+       status = cond do
+         abs(deviation_ms) <= tolerance_ms -> :on_time
+         deviation_ms < -tolerance_ms -> :early
+         deviation_ms > tolerance_ms -> :late
+         true -> :unknown
+       end
+       
+       format_timing_result(status, deviation_ms, tolerance_ms)
+     end
+   end
 
-      %{"timingSeverity" => "warning"} ->
-        # === SOFT TIMING WARNING: Note slightly off but acceptable ===
-        {:warning, format_timing_error(timing_info)}
+   defp validate_timing_fallback(timing_info) do
+     case timing_info do
+       %{"timingSeverity" => "error"} ->
+         # === HARD TIMING ERROR: Note too far from beat ===
+         {:error, format_timing_error(timing_info)}
 
-      %{"timingStatus" => "on-time"} ->
-        # Good timing
-        {:ok, "✓ Ritmo perfecto"}
+       %{"timingSeverity" => "warning"} ->
+         # === SOFT TIMING WARNING: Note slightly off but acceptable ===
+         {:warning, format_timing_error(timing_info)}
 
-      _ ->
-        # Unknown or no timing info (skip validation)
-        {:ignore, "Sin información de ritmo"}
-    end
-  end
+       %{"timingStatus" => "on-time"} ->
+         # Good timing
+         {:ok, "✓ Ritmo perfecto"}
 
-  defp format_timing_error(%{"timingStatus" => status, "timingDeviation" => deviation}) do
-    case status do
-      "between-beats" ->
-        "❌ Nota entre beats. No pertenece al ritmo esperado."
+       _ ->
+         # Unknown or no timing info (skip validation)
+         {:ignore, "Sin información de ritmo"}
+     end
+   end
 
-      "early" when deviation < -300 ->
-        "⚠️  Demasiado rápido (#{abs(trunc(deviation))}ms antes del beat)"
+   defp format_timing_result(status, deviation_ms, tolerance_ms) do
+     case status do
+       :on_time ->
+         {:ok, "✓ Ritmo perfecto"}
 
-      "early" when deviation < -150 ->
-        "⚠️  Un poco rápido (#{abs(trunc(deviation))}ms)"
+       :early ->
+         abs_dev = abs(trunc(deviation_ms))
+         if abs_dev > 300 do
+           {:warning, "⚠️  Demasiado rápido (#{abs_dev}ms antes del beat esperado)"}
+         else
+           {:ok, "✓ Un poco rápido pero aceptable (#{abs_dev}ms)"}
+         end
 
-      "early" ->
-        "⚠️  Un poco rápido"
+       :late ->
+         dev = trunc(deviation_ms)
+         if dev > 300 do
+           {:warning, "⚠️  Demasiado lento (#{dev}ms después del beat esperado)"}
+         else
+           {:ok, "✓ Un poco lento pero aceptable (#{dev}ms)"}
+         end
 
-      "late" when deviation > 300 ->
-        "⚠️  Demasiado lento (#{trunc(deviation)}ms después del beat)"
+       _ ->
+         {:ignore, "Sin información clara de ritmo"}
+     end
+   end
 
-      "late" when deviation > 150 ->
-        "⚠️  Un poco lento (#{trunc(deviation)}ms)"
+   defp format_timing_error(%{"timingStatus" => status, "timingDeviation" => deviation}) do
+     case status do
+       "between-beats" ->
+         "❌ Nota entre beats. No pertenece al ritmo esperado."
 
-      "late" ->
-        "⚠️  Un poco lento"
+       "early" when deviation < -300 ->
+         "⚠️  Demasiado rápido (#{abs(trunc(deviation))}ms antes del beat)"
 
-      _ ->
-        "⚠️  Ritmo fuera de tiempo"
-    end
-  end
+       "early" when deviation < -150 ->
+         "⚠️  Un poco rápido (#{abs(trunc(deviation))}ms)"
+
+       "early" ->
+         "⚠️  Un poco rápido"
+
+       "late" when deviation > 300 ->
+         "⚠️  Demasiado lento (#{trunc(deviation)}ms después del beat)"
+
+       "late" when deviation > 150 ->
+         "⚠️  Un poco lento (#{trunc(deviation)}ms)"
+
+       "late" ->
+         "⚠️  Un poco lento"
+
+       _ ->
+         "⚠️  Ritmo fuera de tiempo"
+     end
+   end
 
   # --- Core Logic: Note Validation ---
 

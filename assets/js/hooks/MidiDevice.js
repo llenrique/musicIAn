@@ -454,20 +454,25 @@ const MidiDevice = {
         //   `Severity: ${timingInfo.severity}`
         // );
         
-        // Still send to server for validation/tracking
-        this.safePushEvent("midi_note_on", { 
-          midi: note, 
-          velocity: velocity,
-          // === Beat-based timing information ===
-          timestamp: notePlayedAtMs,
-          expectedBeat: expectedBeat,
-          timingStatus: timingInfo.status,
-          timingDeviation: timingInfo.deviation,
-          timingSeverity: timingInfo.severity,
-          beatWindowStart: timingInfo.beatWindowStart,
-          beatWindowEnd: timingInfo.beatWindowEnd,
-          noteRelativeTime: timingInfo.noteRelativeTime
-        });
+         // Still send to server for validation/tracking
+         this.safePushEvent("midi_note_on", { 
+           midi: note, 
+           velocity: velocity,
+           // === Raw timing data for server-side analysis ===
+           notePlayedAtMs: notePlayedAtMs,
+           expectedBeat: expectedBeat,
+           metronomeStartTimeMs: this.metronomeStartTime,
+           beatDurationMs: this.beatDurationMs,
+           currentStepIndex: this.currentStepIndex,
+           // === Pre-calculated timing (for reference) ===
+           timingStatus: timingInfo.status,
+           timingDeviation: timingInfo.deviation,
+           timingSeverity: timingInfo.severity,
+           beatWindowStart: timingInfo.beatWindowStart,
+           beatWindowEnd: timingInfo.beatWindowEnd,
+           noteRelativeTime: timingInfo.noteRelativeTime,
+           toleranceMs: timingInfo.toleranceMs
+         });
       } else {
         this.triggerLocalEffects(note, 0, false, "midi-in");
         this.safePushEvent("midi_note_off", { midi: note });
