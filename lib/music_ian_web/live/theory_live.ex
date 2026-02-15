@@ -254,55 +254,57 @@ defmodule MusicIanWeb.TheoryLive do
   end
 
    def handle_event("demo_finished", _, socket) do
-     if socket.assigns.lesson_active do
-       # === FSM TRANSITION: demo → post_demo ===
-       # Client notifies server that demo playback finished
-       fsm = socket.assigns.lesson_state
-       case MusicIan.Practice.FSM.LessonFSM.transition_to_post_demo(fsm) do
-         {:ok, new_fsm} ->
-           {:noreply,
-            socket
-            |> assign(:lesson_state, new_fsm)
-            |> assign(:lesson_phase, :post_demo)
-            |> assign(:lesson_feedback, %{
-              status: :info,
-              message: "Demo completado. ¿Repetir o comenzar a practicar?"
-            })}
-
-         {:error, _reason} ->
-           {:noreply, socket}
-       end
-     else
-       {:noreply, socket}
-     end
-   end
-
-  # REMOVED: handle_info(:next_demo_step) and related demo loop functions
-  # as they are now handled client-side.
-
-    def handle_event("begin_practice", _, socket) do
       if socket.assigns.lesson_active do
-        # === FSM TRANSITION: intro/post_demo → countdown ===
-        case MusicIan.Practice.FSM.LessonFSM.transition_to_countdown(socket.assigns.lesson_state) do
-          {:ok, new_fsm_state} ->
-            # Start countdown (10 seconds) - first tick will activate metronome
-            Process.send_after(self(), :countdown_tick, 1000)
-
+        # === FSM TRANSITION: demo → post_demo ===
+        # Client notifies server that demo playback finished
+        fsm = socket.assigns.lesson_state
+        case MusicIan.Practice.FSM.LessonFSM.transition_to_post_demo(fsm) do
+          {:ok, new_fsm} ->
             {:noreply,
              socket
-             |> assign(:lesson_state, new_fsm_state)
-             |> assign(:lesson_phase, :countdown)
-             |> assign(:countdown, 10)
-             |> assign(:countdown_stage, :counting)
-             |> assign(:metronome_active, false)}
+             |> assign(:lesson_state, new_fsm)
+             |> assign(:current_step_index, 0)
+             |> assign(:lesson_phase, :post_demo)
+             |> assign(:lesson_feedback, %{
+               status: :info,
+               message: "Demo completado. ¿Repetir o comenzar a practicar?"
+             })}
 
-          {:error, _} ->
+          {:error, _reason} ->
             {:noreply, socket}
         end
       else
         {:noreply, socket}
       end
     end
+
+  # REMOVED: handle_info(:next_demo_step) and related demo loop functions
+  # as they are now handled client-side.
+
+    def handle_event("begin_practice", _, socket) do
+      if socket.assigns.lesson_active do
+         # === FSM TRANSITION: intro/post_demo → countdown ===
+         case MusicIan.Practice.FSM.LessonFSM.transition_to_countdown(socket.assigns.lesson_state) do
+           {:ok, new_fsm_state} ->
+             # Start countdown (10 seconds) - first tick will activate metronome
+             Process.send_after(self(), :countdown_tick, 1000)
+
+             {:noreply,
+              socket
+              |> assign(:lesson_state, new_fsm_state)
+              |> assign(:current_step_index, 0)
+              |> assign(:lesson_phase, :countdown)
+              |> assign(:countdown, 10)
+              |> assign(:countdown_stage, :counting)
+              |> assign(:metronome_active, false)}
+
+           {:error, _} ->
+             {:noreply, socket}
+         end
+       else
+         {:noreply, socket}
+       end
+     end
 
   def handle_event("stop_lesson", _, socket) do
     {:noreply, assign_lesson_state(socket, nil)}
