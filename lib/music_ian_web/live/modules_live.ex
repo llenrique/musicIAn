@@ -37,12 +37,25 @@ defmodule MusicIanWeb.ModulesLive do
     <div class="min-h-full bg-slate-50 text-slate-800 p-8 font-sans">
       <!-- Header -->
       <header class="mb-8 border-b border-slate-200 pb-6">
-        <h1 class="text-3xl font-bold text-slate-900 tracking-tight mb-2">
-          📚 Módulos de Aprendizaje
-        </h1>
-        <p class="text-slate-500 text-lg">
-          Explora los módulos organizados con tus lecciones y progreso.
-        </p>
+        <div class="flex items-start justify-between mb-4">
+          <div>
+            <h1 class="text-3xl font-bold text-slate-900 tracking-tight mb-2">
+              📚 Módulos de Aprendizaje
+            </h1>
+            <p class="text-slate-500 text-lg">
+              Explora los módulos organizados con tus lecciones y progreso.
+            </p>
+          </div>
+          <.link
+            navigate={~p"/"}
+            class="flex items-center gap-2 px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white text-sm font-medium rounded transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+            </svg>
+            Volver al Explorador
+          </.link>
+        </div>
       </header>
 
       <!-- Modules Grid -->
