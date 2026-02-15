@@ -182,8 +182,10 @@ defmodule MusicIanWeb.TheoryLive do
     if socket.assigns.lesson_active do
       # === FSM TRANSITION: intro/post_demo → demo ===
       fsm = socket.assigns.lesson_state
+      IO.puts("🎬 START_DEMO: current_state=#{fsm.current_state}")
       case MusicIan.Practice.FSM.LessonFSM.transition_to_demo(fsm) do
         {:ok, new_fsm} ->
+          IO.puts("✅ Transitioned to demo")
           # Prepare sequence for client-side playback
           lesson = new_fsm.lesson
           tempo = socket.assigns.tempo
@@ -217,10 +219,12 @@ defmodule MusicIanWeb.TheoryLive do
              steps: sequence_steps
            })}
 
-        {:error, _} ->
+        {:error, reason} ->
+          IO.puts("❌ Failed to transition to demo: #{inspect(reason)}")
           {:noreply, socket}
       end
     else
+      IO.puts("⚠️ START_DEMO called but lesson not active")
       {:noreply, socket}
     end
   end
