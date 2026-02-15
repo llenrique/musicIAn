@@ -21,7 +21,10 @@ defmodule MusicIan.Practice.LessonEngine do
     # %{status: :success/:error, message: String}
     :feedback,
     # boolean
-    :completed?
+    :completed?,
+    # === NEW: Análisis de cada paso ===
+    # [%{step_index: 0, note: 60, timing: :on_time, tempo_deviation: 0, status: :success}, ...]
+    step_analysis: []
   ]
 
   @type t :: %__MODULE__{}
@@ -42,7 +45,8 @@ defmodule MusicIan.Practice.LessonEngine do
            step_index: 0,
            stats: %{correct: 0, errors: 0},
            feedback: nil,
-           completed?: false
+           completed?: false,
+           step_analysis: []
          }}
     end
   end
@@ -50,7 +54,10 @@ defmodule MusicIan.Practice.LessonEngine do
   # --- State Transitions ---
 
   def start_practice(%__MODULE__{} = state) do
-    %{state | phase: :active, feedback: nil}
+    # === IMPORTANT: Reset step analysis for new practice session ===
+    # Each practice session starts fresh with empty analysis
+    # But accumulated stats are preserved (optional, based on requirements)
+    %{state | phase: :active, feedback: nil, step_analysis: []}
   end
 
   def start_demo(%__MODULE__{} = state) do
@@ -307,23 +314,23 @@ defmodule MusicIan.Practice.LessonEngine do
     # === TIMING VALIDATION ===
     # Check if note was played on time
     # Separate warnings (deduct style points) from hard errors
-    timing_message =
+    {timing_status, timing_message} =
       if timing_info do
         case validate_timing(timing_info) do
           {:ok, msg} -> 
-            msg
+            {:on_time, msg}
           {:warning, msg} -> 
             # === FIX: Warning means correct note but timing slightly off ===
             # Still counts as correct, but with feedback
-            msg
+            {:slightly_off, msg}
           {:error, msg} -> 
             # === This shouldn't happen in handle_success, but include for safety ===
-            "⚠️  " <> msg
+            {:late, "⚠️  " <> msg}
           _ -> 
-            ""
+            {:unknown, ""}
         end
       else
-        ""
+        {:unknown, ""}
       end
 
     message =
@@ -332,6 +339,20 @@ defmodule MusicIan.Practice.LessonEngine do
       else
         "¡Correcto! #{timing_message}"
       end
+
+    # === NEW: Build step analysis record ===
+    step_analysis_record = %{
+      step_index: state.step_index,
+      step_text: current_step_text,
+      notes: current_step[:notes] || [current_step[:note]],
+      timing_status: timing_status,
+      timing_deviation: timing_info["timingDeviation"] || 0,
+      status: :success,
+      timestamp: NaiveDateTime.utc_now()
+    }
+
+    # === Append to step_analysis list ===
+    new_step_analysis = state.step_analysis ++ [step_analysis_record]
 
     # === FIX: Correct off-by-one error ===
     # total_steps is the count (e.g., 9)
@@ -345,6 +366,7 @@ defmodule MusicIan.Practice.LessonEngine do
         state
         | stats: new_stats,
           step_index: next_index,
+          step_analysis: new_step_analysis,
           feedback: %{status: :success, message: message}
       }
 
@@ -357,6 +379,7 @@ defmodule MusicIan.Practice.LessonEngine do
         | stats: new_stats,
           # Keep index at end to show completion state
           step_index: next_index,
+          step_analysis: new_step_analysis,
           phase: :summary,
           completed?: true,
           feedback: %{status: :success, message: "¡Lección Completada!"}
@@ -369,6 +392,9 @@ defmodule MusicIan.Practice.LessonEngine do
 
   defp handle_error(state, played_midi, target_note, timing_info \\ nil) do
     new_stats = Map.update!(state.stats, :errors, &(&1 + 1))
+
+    current_step = Enum.at(state.lesson.steps, state.step_index)
+    current_step_text = current_step[:text] || "???"
 
     target_name =
       if is_list(target_note) do
@@ -389,17 +415,37 @@ defmodule MusicIan.Practice.LessonEngine do
       end
 
     # Append timing error if present
-    message =
+    {timing_status, message} =
       if timing_info do
         case validate_timing(timing_info) do
-          {:error, timing_msg} -> base_message <> " " <> timing_msg
-          _ -> base_message
+          {:error, timing_msg} -> {:late, base_message <> " " <> timing_msg}
+          _ -> {:unknown, base_message}
         end
       else
-        base_message
+        {:unknown, base_message}
       end
 
-    new_state = %{state | stats: new_stats, feedback: %{status: :error, message: message}}
+    # === NEW: Build error step analysis record ===
+    step_analysis_record = %{
+      step_index: state.step_index,
+      step_text: current_step_text,
+      notes: current_step[:notes] || [current_step[:note]],
+      played_note: played_midi,
+      timing_status: timing_status,
+      timing_deviation: timing_info["timingDeviation"] || 0,
+      status: :error,
+      timestamp: NaiveDateTime.utc_now()
+    }
+
+    # === Append to step_analysis list ===
+    new_step_analysis = state.step_analysis ++ [step_analysis_record]
+
+    new_state = %{
+      state 
+      | stats: new_stats, 
+        step_analysis: new_step_analysis,
+        feedback: %{status: :error, message: message}
+    }
 
     {:error, new_state}
   end
