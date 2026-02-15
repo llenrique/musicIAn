@@ -196,7 +196,6 @@ const MidiDevice = {
     if (!this.localNoteListener) {
       this.localNoteListener = (e) => {
          const { midi, velocity, isOn, source } = e.detail;
-         console.log("🎹 Local Note Event (MidiDevice):", midi, isOn ? "ON" : "OFF", source);
          
          // Only send MIDI OUT if the source is NOT "midi-in" or "demo-player" (to avoid loops)
          if (source !== "midi-in" && source !== "demo-player") {
@@ -292,55 +291,33 @@ const MidiDevice = {
   },
 
   sendMidiOut(midi, duration) {
-    console.log(`📤 sendMidiOut: MIDI ${midi}, duration ${duration}s, access=${this.midiAccess ? 'YES' : 'NO'}`);
-    
     if (!this.midiAccess) {
       console.warn("⚠️ MIDI Output: No MIDI Access available");
       return;
     }
     
-    // Note On
-    console.log(`   → Calling sendNoteOn(${midi}, 100)`);
     this.sendNoteOn(midi, 100);
     
-    // Note Off after duration
     if (duration) {
       setTimeout(() => {
-        console.log(`   → Calling sendNoteOff(${midi})`);
         this.sendNoteOff(midi);
       }, duration * 1000);
     }
   },
 
   sendNoteOn(midi, velocity) {
-    console.log(`[sendNoteOn] midi=${midi}, vel=${velocity}, midiAccess=${this.midiAccess ? 'EXISTS' : 'NULL'}`);
-    
     if (!this.midiAccess) {
-      console.warn("⚠️ MIDI Output ignored: No MIDI Access. Attempting to initialize...");
+      console.warn("⚠️ MIDI Output: No MIDI Access");
       this.initMIDI();
       return;
     }
     
-    const outputCount = this.midiAccess.outputs.size;
-    console.log(`[sendNoteOn] Outputs available: ${outputCount}`);
-    
-    let outputsFound = 0;
     for (let output of this.midiAccess.outputs.values()) {
-      outputsFound++;
-      console.log(`[sendNoteOn] Sending to output ${outputsFound}/${outputCount}: "${output.name}"`);
       try {
-        // Send to Channel 1 (0x90)
-        const message = [0x90, midi, velocity];
-        console.log(`[sendNoteOn] Message bytes: [${message.join(', ')}]`);
-        output.send(message);
-        console.log(`✅ Sent Note ON ${midi} (Vel ${velocity}) to ${output.name}`);
+        output.send([0x90, midi, velocity]);
       } catch (e) {
         console.error("❌ Error sending MIDI Note On:", e);
       }
-    }
-    
-    if (outputsFound === 0) {
-      console.warn("⚠️ No MIDI Output devices found in loop.");
     }
   },
 
@@ -588,9 +565,6 @@ const MidiDevice = {
     this.beatDurationMs = beatIntervalMs;
     this.timingLog = []; // Reset timing log
     
-    console.log(`⏰ Starting Metronome at ${bpm} BPM (Beat: ${beatIntervalMs}ms)`);
-    console.log(`⏰ Metronome Time Reference: ${this.metronomeStartTime.toFixed(0)}ms`);
-    
     // YDP-105 does NOT support MIDI Start/Stop or Clock.
     // We rely purely on the simulated click track.
     
@@ -796,23 +770,12 @@ const MidiDevice = {
   startDemoSequencer(tempo, steps) {
     this.stopDemoSequencer();
     this.stopMetronome(); // Ensure regular metronome is off
-
-    console.log(`▶️ Starting Demo Sequencer at ${tempo} BPM`);
-    console.log(`📋 Steps to play:`, steps.length);
-    console.log(`🎹 MIDI Access available:`, this.midiAccess ? "YES" : "NO");
-    if (this.midiAccess) {
-      console.log(`   Outputs available:`, this.midiAccess.outputs.size);
-    }
     
     const beatDurationMs = 60000 / tempo;
     let currentStepIndex = 0;
     
-    // We need to schedule events. 
-    // Since JS is single threaded, a recursive setTimeout loop is often better than setInterval for varying durations.
-    
     const playNextStep = () => {
       if (currentStepIndex >= steps.length) {
-        console.log("⏹️ Demo Finished");
         this.pushEvent("demo_finished", {});
         return;
       }
@@ -820,15 +783,11 @@ const MidiDevice = {
       const step = steps[currentStepIndex];
       const stepDurationMs = step.duration_beats * beatDurationMs;
       
-      console.log(`📍 Demo Step ${currentStepIndex + 1}/${steps.length}: "${step.text}" - ${step.notes.length} notes`);
-      
       // 1. Update UI (highlight notes on staff/keyboard)
       this.pushEvent("demo_step_update", { step_index: step.step_index });
       
       // 2. Play Notes
       step.notes.forEach(midi => {
-        console.log(`   🎵 Playing MIDI ${midi} for ${((stepDurationMs / 1000) * 0.9).toFixed(2)}s`);
-        // Play note with duration slightly shorter than full step to articulate
         this.sendMidiOut(midi, (stepDurationMs / 1000) * 0.9);
         // Trigger visual effect locally
         this.triggerLocalEffects(midi, 80, true, "demo-player");
@@ -874,7 +833,6 @@ const MidiDevice = {
       clearTimeout(this.demoTimeout);
       this.demoTimeout = null;
     }
-    console.log("⏹️ Demo Sequencer Stopped");
   },
 
   playMetronomeClick() {
