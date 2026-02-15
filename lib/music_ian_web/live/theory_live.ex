@@ -267,15 +267,26 @@ defmodule MusicIanWeb.TheoryLive do
 
   def handle_event("demo_finished", _, socket) do
     if socket.assigns.lesson_active do
-      # === FIX: Don't auto-start practice after demo ===
-      # Instead, wait for user to manually start with "begin_practice" button
-      {:noreply,
-       socket
-       |> assign(:lesson_phase, :post_demo)
-       |> assign(:lesson_feedback, %{
-         status: :info,
-         message: "Demo completado. Presiona 'Comenzar Práctica' para empezar."
-       })}
+      # === FSM TRANSITION: demo → post_demo ===
+      # Client notifies server that demo playback finished
+      fsm = socket.assigns.lesson_state
+      IO.puts("🏁 DEMO_FINISHED: current_state=#{fsm.current_state}")
+      case MusicIan.Practice.FSM.LessonFSM.transition_to_post_demo(fsm) do
+        {:ok, new_fsm} ->
+          IO.puts("✅ Transitioned to post_demo")
+          {:noreply,
+           socket
+           |> assign(:lesson_state, new_fsm)
+           |> assign(:lesson_phase, :post_demo)
+           |> assign(:lesson_feedback, %{
+             status: :info,
+             message: "Demo completado. ¿Repetir o comenzar a practicar?"
+           })}
+
+        {:error, reason} ->
+          IO.puts("❌ Failed to transition to post_demo: #{inspect(reason)}")
+          {:noreply, socket}
+      end
     else
       {:noreply, socket}
     end
