@@ -105,8 +105,7 @@ defmodule MusicIan.Practice.Manager.LessonManager do
       select: %{
         attempts: count(r.id),
         total_correct: sum(r.correct_count),
-        total_errors: sum(r.error_count),
-        latest_accuracy: max(r.accuracy)
+        total_errors: sum(r.error_count)
       }
     
     Repo.one(query)
