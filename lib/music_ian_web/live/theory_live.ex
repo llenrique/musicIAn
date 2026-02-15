@@ -447,22 +447,26 @@ defmodule MusicIanWeb.TheoryLive do
               |> assign(:lesson_state, new_state)}
 
            {:completed, new_state} ->
-             # Side Effect: Save to DB (UI Layer Responsibility)
-             MusicIan.Practice.Helper.LessonHelper.save_lesson_completion(
-               new_state.lesson_id,
-               new_state.stats
-             )
+              # === NEW: Save to DB with step-by-step analysis ===
+              # Includes: stats, timing analysis, note accuracy, etc.
+              MusicIan.Practice.Helper.LessonHelper.save_lesson_completion(
+                new_state.lesson_id,
+                new_state.stats,
+                new_state.step_analysis
+              )
 
-             # === FIX: Clear held_notes when lesson completes ===
-             {:noreply,
-              socket
-              |> assign(:lesson_phase, :summary)
-              |> assign(:current_step_index, new_state.step_index)
-              |> assign(:lesson_stats, new_state.stats)
-              |> assign(:lesson_feedback, new_state.feedback)
-              |> assign(:held_notes, MapSet.new())
-              # IMPORTANT: Update internal state
-              |> assign(:lesson_state, new_state)}
+              # === METRONOME: Deactivate when practice completes ===
+              {:noreply,
+               socket
+               |> assign(:lesson_phase, :summary)
+               |> assign(:current_step_index, new_state.step_index)
+               |> assign(:lesson_stats, new_state.stats)
+               |> assign(:lesson_feedback, new_state.feedback)
+               |> assign(:held_notes, MapSet.new())
+               |> assign(:metronome_active, false)
+               |> push_event("toggle_metronome", %{active: false, bpm: socket.assigns.tempo})
+               # IMPORTANT: Update internal state
+               |> assign(:lesson_state, new_state)}
 
           {:error, new_state} ->
             {:noreply,
@@ -581,7 +585,9 @@ defmodule MusicIanWeb.TheoryLive do
 
      if countdown > 3 do
        # === STAGE 1: Normal countdown (10 → 4) ===
-       # Just show the number counting down
+       # Metrónomo ACTIVO - Usuario escucha y se adapta al ritmo
+       # IMPORTANTE: NO desactivar metrónomo durante esta etapa
+       # El metrónomo fue activado en begin_practice y se mantiene activo
        Process.send_after(self(), :countdown_tick, 1000)
        {:noreply, 
         socket
@@ -590,7 +596,9 @@ defmodule MusicIanWeb.TheoryLive do
      else
        if countdown > 0 do
          # === STAGE 2: "Listo, Set, ¡Vamos!" (3 → 1) ===
-         # Show Spanish countdown with beeps
+         # Metrónomo ACTIVO + Beeps finales
+         # push_event("countdown_tick") es SOLO para sonidos de beep en MidiDevice.js
+         # NO afecta el estado del metrónomo (sigue activo desde begin_practice)
          Process.send_after(self(), :countdown_tick, 1000)
          {:noreply, 
           socket
@@ -598,7 +606,8 @@ defmodule MusicIanWeb.TheoryLive do
           |> assign(:countdown_stage, :final)
           |> push_event("countdown_tick", %{countdown: countdown, stage: "final"})}
        else
-         # === Countdown finished - start practice ===
+         # === Countdown finished - start active practice ===
+         # Metrónomo SIGUE ACTIVO (fue activado en begin_practice)
          steps = socket.assigns.current_lesson.steps
          tempo = socket.assigns.tempo
          metronome_enabled = socket.assigns.metronome_active
