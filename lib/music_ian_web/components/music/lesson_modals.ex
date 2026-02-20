@@ -328,8 +328,17 @@ defmodule MusicIanWeb.Components.Music.LessonModals do
   attr :lesson, :map, required: true
   attr :current_step_index, :integer, required: true
   attr :lesson_feedback, :map, default: nil
+  attr :lesson_state, :map, default: nil
 
   def lesson_step_indicator(assigns) do
+    {progress_percent, progress_text} =
+      calculate_progress(assigns.lesson, assigns.current_step_index, assigns.lesson_state)
+
+    assigns =
+      assigns
+      |> assign(:progress_percent, progress_percent)
+      |> assign(:progress_text, progress_text)
+
     ~H"""
     <% current_step = Enum.at(@lesson.steps, @current_step_index) %>
     <div class={"w-full bg-white border shadow-sm rounded-lg p-4 flex items-center gap-4 transition-all " <>
@@ -341,7 +350,7 @@ defmodule MusicIanWeb.Components.Music.LessonModals do
     }>
       <div class="flex-grow">
         <div class="flex justify-between text-xs text-slate-400 mb-1 uppercase font-bold tracking-wider">
-          <span>Paso {@current_step_index + 1} de {length(@lesson.steps)}</span>
+          <span>{@progress_text}</span>
           <span>
             {if @lesson_feedback, do: @lesson_feedback.message, else: "En espera..."}
           </span>
@@ -361,12 +370,38 @@ defmodule MusicIanWeb.Components.Music.LessonModals do
             stroke-width="4"
             fill="none"
             stroke-dasharray="125.6"
-            stroke-dashoffset={125.6 - 125.6 * (@current_step_index / length(@lesson.steps))}
+            stroke-dashoffset={125.6 - 125.6 * @progress_percent}
             class="transition-all duration-500 ease-out"
           />
         </svg>
       </div>
     </div>
     """
+  end
+
+  defp calculate_progress(lesson, current_index, lesson_state) do
+    if lesson_state && Map.get(lesson_state, :target_duration_ms, 0) > 0 do
+      elapsed = Map.get(lesson_state, :elapsed_practice_ms, 0)
+      target = lesson_state.target_duration_ms
+      percent = min(1.0, elapsed / target)
+
+      remaining_ms = max(0, target - elapsed)
+      remaining_mins = div(remaining_ms, 60_000)
+      remaining_secs = div(rem(remaining_ms, 60_000), 1_000)
+
+      time_text =
+        "#{remaining_mins}:#{remaining_secs |> Integer.to_string() |> String.pad_leading(2, "0")}"
+
+      loop_text =
+        if Map.get(lesson_state, :loop_count, 0) > 0,
+          do: " (Vuelta #{lesson_state.loop_count + 1})",
+          else: ""
+
+      {percent, "Tiempo restante: #{time_text}#{loop_text}"}
+    else
+      total = length(lesson.steps)
+      percent = if total > 0, do: current_index / total, else: 0
+      {percent, "Paso #{current_index + 1} de #{total}"}
+    end
   end
 end

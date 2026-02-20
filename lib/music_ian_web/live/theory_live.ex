@@ -1146,6 +1146,7 @@ defmodule MusicIanWeb.TheoryLive do
                     lesson={@current_lesson}
                     current_step_index={@current_step_index}
                     lesson_feedback={@lesson_feedback}
+                    lesson_state={@lesson_state}
                   />
                 <% end %>
               </div>

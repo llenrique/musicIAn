@@ -52,7 +52,11 @@ defmodule MusicIan.Practice.FSM.LessonFSM do
     :time_signature,
     :timing_strictness,
     :practice_start_time,
-    :beat_map
+    :beat_map,
+    # Duration control
+    :target_duration_ms,
+    :elapsed_practice_ms,
+    :loop_count
   ]
 
   @type state :: %__MODULE__{}
@@ -90,7 +94,10 @@ defmodule MusicIan.Practice.FSM.LessonFSM do
            time_signature: lesson[:time_signature] || "4/4",
            timing_strictness: lesson[:timing_strictness] || 0,
            practice_start_time: nil,
-           beat_map: nil
+           beat_map: nil,
+           target_duration_ms: (lesson[:duration_minutes] || 0) * 60 * 1000,
+           elapsed_practice_ms: 0,
+           loop_count: 0
          }}
     end
   end
@@ -137,7 +144,9 @@ defmodule MusicIan.Practice.FSM.LessonFSM do
          current_exercise: nil,
          bpm: active_bpm,
          beat_map: nil,
-         practice_start_time: nil
+         practice_start_time: nil,
+         elapsed_practice_ms: 0,
+         loop_count: 0
      }}
   end
 
@@ -221,7 +230,9 @@ defmodule MusicIan.Practice.FSM.LessonFSM do
          metronome_active: false,
          current_exercise: nil,
          beat_map: nil,
-         practice_start_time: nil
+         practice_start_time: nil,
+         elapsed_practice_ms: 0,
+         loop_count: 0
      }}
   end
 
@@ -398,6 +409,14 @@ defmodule MusicIan.Practice.FSM.LessonFSM do
       |> Map.update!(:correct, &(&1 + 1))
       |> Map.update!(:timing_penalty_total, &(&1 + timing_penalty))
 
+    # Calculate step duration in ms based on beats and BPM
+    step_beats = current_step[:duration] || 1
+    beat_duration_ms = 60_000 / fsm.bpm
+    step_duration_ms = trunc(step_beats * beat_duration_ms)
+
+    # Update elapsed time
+    new_elapsed = (fsm.elapsed_practice_ms || 0) + step_duration_ms
+
     message = build_success_message(timing_message, timing_penalty)
 
     step_record = %{
@@ -413,28 +432,58 @@ defmodule MusicIan.Practice.FSM.LessonFSM do
 
     new_analysis = fsm.step_analysis ++ [step_record]
 
-    next_fsm =
-      %{
-        fsm
-        | stats: new_stats,
-          step_index: next_index,
-          step_analysis: new_analysis,
-          feedback: %{status: :success, message: message},
-          current_exercise: nil
-      }
-      |> maybe_generate_exercise()
-      |> skip_to_next_playable()
+    # Base next FSM state
+    base_next_fsm = %{
+      fsm
+      | stats: new_stats,
+        step_analysis: new_analysis,
+        feedback: %{status: :success, message: message},
+        current_exercise: nil,
+        elapsed_practice_ms: new_elapsed
+    }
 
-    if next_fsm.step_index < total_steps do
-      {:continue, next_fsm}
-    else
-      {:completed,
-       %{
-         next_fsm
-         | current_state: :summary,
-           metronome_active: false,
-           feedback: %{status: :success, message: "¡Lección Completada!"}
-       }}
+    # Determine if we should continue, loop, or finish
+    is_end_of_sequence = next_index >= total_steps
+    is_time_completed = fsm.target_duration_ms > 0 and new_elapsed >= fsm.target_duration_ms
+    # If target duration is 0, we fallback to "finish on sequence end" logic
+    should_finish = is_end_of_sequence and (fsm.target_duration_ms == 0 or is_time_completed)
+
+    cond do
+      # Case 1: Sequence not finished -> Continue to next step
+      not is_end_of_sequence ->
+        next_fsm =
+          %{base_next_fsm | step_index: next_index}
+          |> maybe_generate_exercise()
+          |> skip_to_next_playable()
+
+        {:continue, next_fsm}
+
+      # Case 2: Sequence finished BUT time not met -> LOOP
+      is_end_of_sequence and not should_finish ->
+        loop_message = "¡Muy bien! Repitamos la secuencia para completar el tiempo de práctica."
+
+        loop_fsm =
+          %{
+            base_next_fsm
+            | step_index: 0,
+              loop_count: (fsm.loop_count || 0) + 1,
+              feedback: %{status: :info, message: loop_message}
+          }
+          |> maybe_generate_exercise()
+          |> skip_to_next_playable()
+
+        {:continue, loop_fsm}
+
+      # Case 3: Finished -> Summary
+      true ->
+        {:completed,
+         %{
+           base_next_fsm
+           | current_state: :summary,
+             step_index: next_index,
+             metronome_active: false,
+             feedback: %{status: :success, message: "¡Lección Completada!"}
+         }}
     end
   end
 
