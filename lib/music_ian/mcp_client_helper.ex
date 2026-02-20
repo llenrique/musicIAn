@@ -11,7 +11,7 @@ defmodule MusicIan.MCPClientHelper do
     MCPClientHelper.scale_notes(60, :major)
   """
 
-  alias MusicIan.MusicCore.{Note, Scale, Chord}
+  alias MusicIan.MusicCore.{Chord, Note, Scale}
 
   @doc """
   Detect chord from a list of MIDI note numbers.

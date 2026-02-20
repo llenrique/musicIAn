@@ -2,6 +2,10 @@
 
 Este archivo sirve como memoria persistente para los agentes de IA que trabajan en el proyecto.
 
+> **IMPORTANTE para agentes:** Antes de escribir cualquier código Elixir nuevo, leer
+> [CREDO_TRACKER.md](CREDO_TRACKER.md). Contiene las reglas que Credo enforcea en este
+> proyecto y la lista de issues activos. No introducir issues nuevos del mismo tipo.
+
 ## Descripción del Proyecto
 **musicIAn**: Plataforma web para la enseñanza de instrumentos musicales (foco inicial: Piano/MIDI) y teoría musical en tiempo real.
 Combina análisis de interpretación en vivo con teoría musical adaptativa.
@@ -74,8 +78,8 @@ Ver: [LESSON_FLOW_SIMPLIFIED.md](LESSON_FLOW_SIMPLIFIED.md)
     - [Maestría Global](knowledge/music_theory/10_global_mastery.md)
 
 ## Estado Actual
-- **Fecha**: 2026-02-14
-- **Fase**: Refactorización y simplificación del flujo de lecciones.
+- **Fecha**: 2026-02-16
+- **Fase**: Círculo de quintas rediseñado + compilación limpia.
 - **Logros**:
     - Estructura base Phoenix creada.
     - `MusicCore` implementado (Notas, Escalas, Acordes).
@@ -84,6 +88,19 @@ Ver: [LESSON_FLOW_SIMPLIFIED.md](LESSON_FLOW_SIMPLIFIED.md)
     - Tooltips corregidos (no se quedan pegados).
     - Metrónomo integrado en countdown.
     - Bugs críticos de lecciones corregidos.
+    - `mix compile` limpio (cero warnings) — `warnings_as_errors: true` activo.
+    - **Escalas correctas** — `scale.ex`: `get_natural_note_index/2` (con `use_flats`), `add_accidental_for_degree/3` reescrito, `generate_scale_notes/4` con `opts`. Las 13 escalas mayores del círculo son correctas según libros de teoría (ej. Gb mayor = Gb Ab Bb Cb Db Eb F).
+    - **Bug teclado resuelto** — `keyboard.ex`: eliminado `held_notes` del servidor; highlight de teclas presionadas lo maneja `AudioEngine.js` con `!bg-yellow-400`. `keyboard_notes` (solo mano derecha) separado de `active_notes` (pentagrama, ambas manos). `active_set` MapSet precalculado para lookup O(1).
+    - **Círculo de quintas rediseñado** — `circle_of_fifths.ex` reescrito con 3 anillos concéntricos SVG: anillo mayor exterior, anillo menor interior, centro con nota activa. Colores arcoíris por sector. Toggle Mayor/Menor como botones encima del SVG. Click en anillo mayor → escala mayor; click en anillo menor → escala menor relativa.
+    - `theory_live.ex`: assign `:circle_mode` (`:major`|`:minor`), `handle_event("select_circle_mode", ...)`, `handle_event("select_root", %{"note", "mode"}, ...)` actualizados.
+    - `theory.ex`: `generate_circle_of_fifths` retorna `minor_midi` y `minor` label en cada sector.
+
+## Decisiones de Diseño Importantes
+- **`@sector_colors`** en `circle_of_fifths.ex`: mapa de índice 0..11 → `{color_major, color_minor}`. Se asigna a assigns para evitar acceso directo al módulo desde la plantilla HEEx.
+- **`circle_mode`** controla qué anillo está "activo" visualmente y qué tipo de escala se selecciona al hacer click.
+- **`suggested_keys`** resalta sectores del anillo mayor con opacidad 0.9 (vs 0.75 normal).
+- **`keyboard_base: 48`** en mount de `theory_live.ex` — octava inicial del teclado virtual.
+- **`should_use_flats`** excluye pitch_class 6 (F#/Gb ambiguo): por defecto F# con sostenidos; Gb requiere `use_flats: true` explícito.
 
 ## Convenciones
 - **Código**: Inglés (variables, funciones, módulos).

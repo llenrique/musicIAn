@@ -4,7 +4,7 @@ defmodule MusicIan.MusicCore do
   Contains pure music theory logic, independent of database or web layer.
   """
 
-  alias MusicIan.MusicCore.{Note, Scale, Chord}
+  alias MusicIan.MusicCore.{Chord, Note, Scale}
 
   @doc """
   Converts a MIDI note number to frequency (Hz).

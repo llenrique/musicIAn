@@ -13,7 +13,7 @@ defmodule MusicIan.MusicCore.Note do
   defstruct [:midi, :name, :octave, :frequency]
 
   @notes_sharp ~w(C C# D D# E F F# G G# A A# B)
-  @notes_flat  ~w(C Db D Eb E F Gb G Ab A Bb B)
+  @notes_flat ~w(C Db D Eb E F Gb G Ab A Bb B)
 
   @doc """
   Creates a new Note struct from a MIDI number.
@@ -23,7 +23,7 @@ defmodule MusicIan.MusicCore.Note do
   @spec new(integer(), keyword()) :: t()
   def new(midi, opts \\ []) when is_integer(midi) and midi >= 0 and midi <= 127 do
     use_flats = Keyword.get(opts, :use_flats, false)
-    
+
     %__MODULE__{
       midi: midi,
       name: name_from_midi(midi, use_flats),

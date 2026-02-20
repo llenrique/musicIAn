@@ -80,9 +80,8 @@ defmodule MusicIan.MusicCore.Chord do
   @spec invert(t(), integer()) :: t()
   def invert(%__MODULE__{notes: notes} = chord, inversion) when inversion >= 0 do
     # Calculate effective inversion based on number of notes
-    # e.g. 1st inversion of a triad is same as 4th inversion? No, 3rd inversion returns to root position but octave higher?
-    # Usually inversion 1 means the lowest note is the 3rd.
-    # We will implement it by rotating the notes and adding 12 semitones to the notes that wrap around.
+    # Inversion 1: lowest note is the 3rd. Notes that wrap around get +12 semitones.
+    # We rotate the notes array and adjust octaves accordingly.
 
     count = length(notes)
     effective_inv = rem(inversion, count)
@@ -109,7 +108,7 @@ defmodule MusicIan.MusicCore.Chord do
     %Chord{root: %Note{name: "C", ...}, quality: :major, ...}
   """
   @spec from_midi_notes([integer()]) :: t()
-  def from_midi_notes(midi_notes) when is_list(midi_notes) and length(midi_notes) > 0 do
+  def from_midi_notes([_ | _] = midi_notes) do
     # Normaliza notas a octava 0 para identificar intervalos
     normalized =
       midi_notes
@@ -127,25 +126,18 @@ defmodule MusicIan.MusicCore.Chord do
     new(root, quality)
   end
 
-  @doc false
-  defp identify_chord_quality(normalized_intervals) do
-    # Mapea patrones de intervalos a cualidades de acordes
-    case normalized_intervals do
-      # Triadas
-      [0, 4, 7] -> :major
-      [0, 3, 7] -> :minor
-      [0, 3, 6] -> :diminished
-      [0, 4, 8] -> :augmented
-      [0, 2, 7] -> :sus2
-      [0, 5, 7] -> :sus4
-      # Séptimas
-      [0, 4, 7, 11] -> :major7
-      [0, 4, 7, 10] -> :dominant7
-      [0, 3, 7, 10] -> :minor7
-      [0, 3, 6, 10] -> :minor7b5
-      [0, 3, 6, 9] -> :diminished7
-      # Default: major
-      _ -> :major
-    end
-  end
+  # Triads
+  defp identify_chord_quality([0, 4, 7]), do: :major
+  defp identify_chord_quality([0, 3, 7]), do: :minor
+  defp identify_chord_quality([0, 3, 6]), do: :diminished
+  defp identify_chord_quality([0, 4, 8]), do: :augmented
+  defp identify_chord_quality([0, 2, 7]), do: :sus2
+  defp identify_chord_quality([0, 5, 7]), do: :sus4
+  # Seventh chords
+  defp identify_chord_quality([0, 4, 7, 11]), do: :major7
+  defp identify_chord_quality([0, 4, 7, 10]), do: :dominant7
+  defp identify_chord_quality([0, 3, 7, 10]), do: :minor7
+  defp identify_chord_quality([0, 3, 6, 10]), do: :minor7b5
+  defp identify_chord_quality([0, 3, 6, 9]), do: :diminished7
+  defp identify_chord_quality(_), do: :major
 end

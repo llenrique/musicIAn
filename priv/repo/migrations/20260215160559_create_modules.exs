@@ -8,10 +8,13 @@ defmodule MusicIan.Repo.Migrations.CreateModules do
       add :title, :string, null: false
       add :description, :text
       add :order, :integer, null: false
-      add :category, :string, comment: "Type of module: fundamentals, theory, technique, repertoire"
+
+      add :category, :string,
+        comment: "Type of module: fundamentals, theory, technique, repertoire"
+
       add :learning_objectives, :map, default: %{}, comment: "JSON map of learning goals"
       add :icon, :string, comment: "Icon identifier for UI display"
-      
+
       timestamps(type: :utc_datetime_usec)
     end
 

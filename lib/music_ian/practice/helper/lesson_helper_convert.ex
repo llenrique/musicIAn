@@ -1,13 +1,25 @@
 defmodule MusicIan.Practice.Helper.LessonHelperConvert do
   @moduledoc """
-  Transforms lesson data from database format to frontend/engine format.
-  Single responsibility: Convert schemas to maps, handle JSON keys.
+  Transforms lesson data from database format to engine/frontend format.
+  Single responsibility: convert Ecto schemas to plain maps with atom keys.
+
+  Step field keys are converted from strings (JSON storage) to atoms using a
+  safe allowlist to avoid atom table exhaustion.
   """
 
+  # Allowlist of all valid step field keys (strings → atoms, safe conversion)
+  @step_keys ~w(
+    type text note notes hint finger duration
+    generator params
+  )a
+
+  # Allowlist for nested :params map keys
+  @param_keys ~w(
+    from_octave delta_octaves direction difficulty note_name octave
+  )a
+
   @doc """
-  Convert Lesson schema to map for frontend use.
-  Handles JSON key conversion (strings → atoms).
-  Includes all lesson metadata and pedagogical information.
+  Convert Lesson schema to map for frontend/engine use.
   """
   def schema_to_map(%MusicIan.Curriculum.Lesson{} = lesson) do
     %{
@@ -15,8 +27,11 @@ defmodule MusicIan.Practice.Helper.LessonHelperConvert do
       title: lesson.title,
       description: lesson.description,
       intro: lesson.intro,
-      steps: convert_steps_keys(lesson.steps || []),
+      steps: convert_steps(lesson.steps || []),
       metronome: lesson.metronome,
+      bpm: lesson.bpm || 60,
+      time_signature: lesson.time_signature || "4/4",
+      timing_strictness: lesson.timing_strictness || 0,
       # Pedagogical metadata
       focus: lesson.focus,
       new_concepts: lesson.new_concepts || [],
@@ -38,37 +53,60 @@ defmodule MusicIan.Practice.Helper.LessonHelperConvert do
     Enum.map(lessons, &schema_to_map/1)
   end
 
+  # ---------------------------------------------------------------------------
   # Private helpers
+  # ---------------------------------------------------------------------------
 
-  # Convert string keys to atom keys in steps (from JSON storage)
-  defp convert_steps_keys(steps) when is_list(steps) do
-    Enum.map(steps, fn step ->
-      case step do
-        %{} = map when is_map(map) ->
-          # If it's already a map with atom keys, keep it
-          if Enum.any?(map, fn {k, _} -> is_atom(k) end) do
-            map
-          else
-            # Convert string keys to atom keys
-            Map.new(map, fn {k, v} -> {to_atom(k), v} end)
-          end
+  defp convert_steps(steps) when is_list(steps) do
+    Enum.map(steps, &convert_step/1)
+  end
 
-        other ->
-          other
+  defp convert_step(%{} = step) do
+    # If already atom-keyed (e.g. from seed before DB round-trip), keep as-is
+    # but still normalize the params submap.
+    if atom_keyed?(step) do
+      normalize_params(step)
+    else
+      # Convert string keys → atom keys using allowlist
+      step
+      |> Map.new(fn {k, v} -> {safe_to_atom(k, @step_keys), v} end)
+      |> normalize_params()
+    end
+  end
+
+  defp convert_step(other), do: other
+
+  # Convert the nested :params map (if present) to atom keys
+  defp normalize_params(%{params: params} = step) when is_map(params) do
+    atomized_params =
+      if atom_keyed?(params) do
+        params
+      else
+        Map.new(params, fn {k, v} -> {safe_to_atom(k, @param_keys), v} end)
       end
-    end)
+
+    %{step | params: atomized_params}
   end
 
-  defp convert_steps_keys(other), do: other
+  defp normalize_params(step), do: step
 
-  # Helper to safely convert string to atom
-  defp to_atom(value) when is_binary(value) do
-    String.to_atom(value)
+  # Check if a map already has any atom key (fast heuristic)
+  defp atom_keyed?(%{} = map) do
+    map |> Map.keys() |> List.first() |> is_atom()
   end
 
-  defp to_atom(value) when is_atom(value) do
-    value
+  defp atom_keyed?(_), do: false
+
+  # Safe atom conversion: only converts if the string is in the allowlist.
+  # Unknown keys are kept as strings to avoid crashing or exhausting atom table.
+  defp safe_to_atom(key, allowlist) when is_binary(key) do
+    if Enum.member?(Enum.map(allowlist, &Atom.to_string/1), key) do
+      String.to_existing_atom(key)
+    else
+      key
+    end
   end
 
-  defp to_atom(value), do: value
+  defp safe_to_atom(key, _allowlist) when is_atom(key), do: key
+  defp safe_to_atom(key, _allowlist), do: key
 end

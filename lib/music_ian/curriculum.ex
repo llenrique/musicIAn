@@ -4,8 +4,8 @@ defmodule MusicIan.Curriculum do
   Delegates to Manager for data retrieval and Helper for transformations.
   """
 
-  alias MusicIan.Practice.Manager.LessonManager
   alias MusicIan.Practice.Helper.LessonHelperConvert
+  alias MusicIan.Practice.Manager.LessonManager
 
   @doc """
   Get a lesson by ID from database.

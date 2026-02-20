@@ -1,10 +1,12 @@
 defmodule MusicIan.Curriculum.Module do
+  @moduledoc "Ecto schema for a curriculum module grouping related lessons."
+
   use Ecto.Schema
   import Ecto.Changeset
 
   @primary_key {:id, :string, autogenerate: false}
   @foreign_key_type :string
-  
+
   schema "modules" do
     field :title, :string
     field :description, :string
@@ -12,7 +14,7 @@ defmodule MusicIan.Curriculum.Module do
     field :category, :string
     field :learning_objectives, :map, default: %{}
     field :icon, :string
-    
+
     # Enriched pedagogical metadata
     field :pedagogical_intent, :string
     field :emotional_goal, :string
@@ -34,10 +36,23 @@ defmodule MusicIan.Curriculum.Module do
   def changeset(module, attrs) do
     module
     |> cast(attrs, [
-      :id, :title, :description, :order, :category, :learning_objectives, :icon,
-      :pedagogical_intent, :emotional_goal, :duration_progression_rule, :skill_scope,
-      :completion_criteria, :cognitive_load_growth, :motor_complexity_growth,
-      :theory_complexity_growth, :lesson_duration_progression, :final_student_capabilities,
+      :id,
+      :title,
+      :description,
+      :order,
+      :category,
+      :learning_objectives,
+      :icon,
+      :pedagogical_intent,
+      :emotional_goal,
+      :duration_progression_rule,
+      :skill_scope,
+      :completion_criteria,
+      :cognitive_load_growth,
+      :motor_complexity_growth,
+      :theory_complexity_growth,
+      :lesson_duration_progression,
+      :final_student_capabilities,
       :perceived_confidence_level_target
     ])
     |> validate_required([:id, :title, :order])

@@ -18,15 +18,16 @@ defmodule MusicIan.MIDI.MetronomeController do
   require Logger
 
   # MIDI Note Numbers for Yamaha YDP-105 Metronome Control
-  @metronome_toggle_note 60  # C4 - Toggle metronome on/off
-  @tempo_notes 62..67        # D4-G4 - Tempo digits (0-5 representing tens)
-  @beat_notes 72..79         # C5-G5 - Beat/time signature selection
+  # C4 - Toggle metronome on/off
+  @metronome_toggle_note 60
 
   # Default MIDI channel for metronome control
-  @default_channel 0  # Channel 1 in MIDI terms (0-indexed)
+  # Channel 1 in MIDI terms (0-indexed)
+  @default_channel 0
 
   # Velocity for function button simulation
-  @function_velocity 127  # Maximum velocity to ensure the piano recognizes it
+  # Maximum velocity to ensure the piano recognizes it
+  @function_velocity 127
 
   @doc """
   Enable/toggle the metronome on the connected Yamaha piano.
@@ -70,24 +71,17 @@ defmodule MusicIan.MIDI.MetronomeController do
     - {:error, reason} if failed
   """
   def set_tempo(midi_output, tempo, channel \\ @default_channel) when is_integer(tempo) do
-    # Validate tempo range (typical Yamaha range is 30-300 BPM)
-    cond do
-      tempo < 30 or tempo > 300 ->
-        {:error, "Tempo must be between 30-300 BPM"}
+    if tempo < 30 or tempo > 300 do
+      {:error, "Tempo must be between 30-300 BPM"}
+    else
+      Logger.info("⏱️  Setting Yamaha metronome tempo to #{tempo} BPM")
+      digits = tempo_to_digits(tempo)
+      Logger.debug("Tempo digits: #{inspect(digits)}")
 
-      true ->
-        Logger.info("⏱️  Setting Yamaha metronome tempo to #{tempo} BPM")
-
-        # Convert tempo to digit sequence
-        digits = tempo_to_digits(tempo)
-        Logger.debug("Tempo digits: #{inspect(digits)}")
-
-        # Send each digit as a separate note on the piano
-        with :ok <- send_tempo_digits(midi_output, digits, channel) do
-          {:ok, "Tempo set to #{tempo} BPM"}
-        else
-          error -> {:error, error}
-        end
+      case send_tempo_digits(midi_output, digits, channel) do
+        :ok -> {:ok, "Tempo set to #{tempo} BPM"}
+        error -> {:error, error}
+      end
     end
   end
 
@@ -146,20 +140,15 @@ defmodule MusicIan.MIDI.MetronomeController do
     - {:error, reason} if failed
   """
   def set_volume(midi_output, volume, channel \\ @default_channel) when is_integer(volume) do
-    cond do
-      volume < 0 or volume > 127 ->
-        {:error, "Volume must be between 0-127"}
+    if volume < 0 or volume > 127 do
+      {:error, "Volume must be between 0-127"}
+    else
+      Logger.info("🔊 Setting Yamaha metronome volume to #{volume}")
 
-      true ->
-        Logger.info("🔊 Setting Yamaha metronome volume to #{volume}")
-
-        # Send CC message for metronome volume (if supported)
-        # This may need to be adjusted based on actual piano responses
-        with :ok <- send_control_change(midi_output, 7, volume, channel) do
-          {:ok, "Volume set to #{volume}"}
-        else
-          error -> {:error, error}
-        end
+      case send_control_change(midi_output, 7, volume, channel) do
+        :ok -> {:ok, "Volume set to #{volume}"}
+        error -> {:error, error}
+      end
     end
   end
 
@@ -253,7 +242,8 @@ defmodule MusicIan.MIDI.MetronomeController do
         note = digit_to_note(digit)
 
         with :ok <- send_note_on(midi_output, note, @function_velocity, channel),
-             :ok <- Process.sleep(100),  # Small delay between digit presses
+             # Small delay between digit presses
+             :ok <- Process.sleep(100),
              :ok <- send_note_off(midi_output, note, channel) do
           :ok
         else
@@ -265,33 +255,52 @@ defmodule MusicIan.MIDI.MetronomeController do
   @doc false
   defp digit_to_note(digit) when digit >= 0 and digit <= 9 do
     # Map digits 0-9 to MIDI notes
-    # Using D4-onwards: D4=62(0), E4=64(1), F4=65(2), G4=67(3), A4=69(4), B4=71(5), C5=72(6), D5=74(7), E5=76(8), F5=77(9)
+    # D4=62(0), E4=64(1), F4=65(2), G4=67(3), A4=69(4),
+    # B4=71(5), C5=72(6), D5=74(7), E5=76(8), F5=77(9)
     notes = %{
-      0 => 62,  # D4
-      1 => 64,  # E4
-      2 => 65,  # F4
-      3 => 67,  # G4
-      4 => 69,  # A4
-      5 => 71,  # B4
-      6 => 72,  # C5
-      7 => 74,  # D5
-      8 => 76,  # E5
-      9 => 77   # F5
+      # D4
+      0 => 62,
+      # E4
+      1 => 64,
+      # F4
+      2 => 65,
+      # G4
+      3 => 67,
+      # A4
+      4 => 69,
+      # B4
+      5 => 71,
+      # C5
+      6 => 72,
+      # D5
+      7 => 74,
+      # E5
+      8 => 76,
+      # F5
+      9 => 77
     }
 
-    Map.get(notes, digit, 62)  # Default to D4 if digit is invalid
+    # Default to D4 if digit is invalid
+    Map.get(notes, digit, 62)
   end
 
   @doc false
   defp beat_type_to_note(beat_type) do
     beatmap = %{
-      :single => 72,      # C5
-      :two => 74,         # D5
-      :three => 76,       # E5
-      :four => 77,        # F5
-      :six_eight => 79,   # G5
-      :three_eight => 81, # A5 (if supported)
-      :cut_time => 83     # B5 (if supported)
+      # C5
+      :single => 72,
+      # D5
+      :two => 74,
+      # E5
+      :three => 76,
+      # F5
+      :four => 77,
+      # G5
+      :six_eight => 79,
+      # A5 (if supported)
+      :three_eight => 81,
+      # B5 (if supported)
+      :cut_time => 83
     }
 
     Map.get(beatmap, beat_type)

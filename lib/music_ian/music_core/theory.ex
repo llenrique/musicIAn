@@ -33,58 +33,69 @@ defmodule MusicIan.MusicCore.Theory do
       angle = i * 30
 
       # Determine Labels (Major and Relative Minor)
-      {label, minor_label} = get_circle_labels(i)
+      {label, minor_label, minor_midi} = get_circle_labels(i)
 
       %{
         index: i,
         label: label,
         minor: minor_label,
         midi: midi,
+        minor_midi: minor_midi,
         angle: angle
       }
     end
   end
 
-  defp get_circle_labels(index) do
-    # Standard Circle of Fifths Labels
-    case index do
-      0 -> {"C", "a"}
-      1 -> {"G", "e"}
-      2 -> {"D", "b"}
-      3 -> {"A", "f#"}
-      4 -> {"E", "c#"}
-      5 -> {"B", "g#"}
-      6 -> {"Gb", "eb"} # Or F#
-      7 -> {"Db", "bb"} # Or C#
-      8 -> {"Ab", "f"}
-      9 -> {"Eb", "c"}
-      10 -> {"Bb", "g"}
-      11 -> {"F", "d"}
-    end
-  end
+  # Standard Circle of Fifths labels: {major_key, relative_minor, minor_root_midi}
+  # Relative minor root = major root - 3 semitones (kept in octave 3-4 range)
+  # A3
+  defp get_circle_labels(0), do: {"C", "Am", 57}
+  # E4
+  defp get_circle_labels(1), do: {"G", "Em", 64}
+  # B3
+  defp get_circle_labels(2), do: {"D", "Bm", 59}
+  # F#4
+  defp get_circle_labels(3), do: {"A", "F#m", 66}
+  # C#4
+  defp get_circle_labels(4), do: {"E", "C#m", 61}
+  # G#4
+  defp get_circle_labels(5), do: {"B", "G#m", 68}
+  # Eb4
+  defp get_circle_labels(6), do: {"Gb/F#", "Ebm", 63}
+  # Bb3
+  defp get_circle_labels(7), do: {"Db", "Bbm", 58}
+  # F4
+  defp get_circle_labels(8), do: {"Ab", "Fm", 65}
+  # C4
+  defp get_circle_labels(9), do: {"Eb", "Cm", 60}
+  # G4
+  defp get_circle_labels(10), do: {"Bb", "Gm", 67}
+  # D4
+  defp get_circle_labels(11), do: {"F", "Dm", 62}
 
   @doc """
   Returns the standard VexFlow key signature string for a given root and scale type.
   """
   def determine_key_signature(root_note, scale_type, opts \\ []) do
     root_name = Note.new(root_note, opts).name
-
-    case scale_type do
-      :major -> root_name
-      :lydian -> root_name # Lydian shares Major key sig (with accidentals handled separately)
-      :mixolydian -> root_name
-      :natural_minor -> root_name <> "m"
-      :harmonic_minor -> root_name <> "m"
-      :melodic_minor -> root_name <> "m"
-      :dorian -> root_name <> "m"
-      :phrygian -> root_name <> "m"
-      :locrian -> root_name <> "m"
-      :pentatonic_major -> root_name
-      :pentatonic_minor -> root_name <> "m"
-      :blues -> root_name <> "m"
-      _ -> "C"
-    end
+    key_signature_suffix(scale_type, root_name)
   end
+
+  # Major-type scales share the major key signature (no suffix)
+  defp key_signature_suffix(:major, root), do: root
+  defp key_signature_suffix(:lydian, root), do: root
+  defp key_signature_suffix(:mixolydian, root), do: root
+  defp key_signature_suffix(:pentatonic_major, root), do: root
+  # Minor-type scales use the minor key signature ("m" suffix)
+  defp key_signature_suffix(:natural_minor, root), do: root <> "m"
+  defp key_signature_suffix(:harmonic_minor, root), do: root <> "m"
+  defp key_signature_suffix(:melodic_minor, root), do: root <> "m"
+  defp key_signature_suffix(:dorian, root), do: root <> "m"
+  defp key_signature_suffix(:phrygian, root), do: root <> "m"
+  defp key_signature_suffix(:locrian, root), do: root <> "m"
+  defp key_signature_suffix(:pentatonic_minor, root), do: root <> "m"
+  defp key_signature_suffix(:blues, root), do: root <> "m"
+  defp key_signature_suffix(_, _root), do: "C"
 
   @doc """
   Returns a map of expected accidentals for a given key signature.
@@ -98,29 +109,31 @@ defmodule MusicIan.MusicCore.Theory do
     minor_flats = ["Dm", "Gm", "Cm", "Fm", "Bbm", "Ebm", "Abm"]
 
     cond do
-      key == "C" or key == "Am" -> %{}
+      key == "C" or key == "Am" ->
+        %{}
 
       key in major_sharps ->
-        count = Enum.find_index(major_sharps, & &1 == key) + 1
+        count = Enum.find_index(major_sharps, &(&1 == key)) + 1
         sharps_order = ["F", "C", "G", "D", "A", "E", "B"]
-        Enum.take(sharps_order, count) |> Map.new(& {&1, "#"})
+        Enum.take(sharps_order, count) |> Map.new(&{&1, "#"})
 
       key in major_flats ->
-        count = Enum.find_index(major_flats, & &1 == key) + 1
+        count = Enum.find_index(major_flats, &(&1 == key)) + 1
         flats_order = ["B", "E", "A", "D", "G", "C", "F"]
-        Enum.take(flats_order, count) |> Map.new(& {&1, "b"})
+        Enum.take(flats_order, count) |> Map.new(&{&1, "b"})
 
       key in minor_sharps ->
-        count = Enum.find_index(minor_sharps, & &1 == key) + 1
+        count = Enum.find_index(minor_sharps, &(&1 == key)) + 1
         sharps_order = ["F", "C", "G", "D", "A", "E", "B"]
-        Enum.take(sharps_order, count) |> Map.new(& {&1, "#"})
+        Enum.take(sharps_order, count) |> Map.new(&{&1, "#"})
 
       key in minor_flats ->
-        count = Enum.find_index(minor_flats, & &1 == key) + 1
+        count = Enum.find_index(minor_flats, &(&1 == key)) + 1
         flats_order = ["B", "E", "A", "D", "G", "C", "F"]
-        Enum.take(flats_order, count) |> Map.new(& {&1, "b"})
+        Enum.take(flats_order, count) |> Map.new(&{&1, "b"})
 
-      true -> %{}
+      true ->
+        %{}
     end
   end
 
@@ -135,9 +148,11 @@ defmodule MusicIan.MusicCore.Theory do
       String.contains?(name, "#") ->
         [base, _] = String.split(name, "#", parts: 2)
         {base, "#"}
+
       String.contains?(name, "b") ->
         [base, _] = String.split(name, "b", parts: 2)
         {base, "b"}
+
       true ->
         {name, ""}
     end
@@ -152,21 +167,23 @@ defmodule MusicIan.MusicCore.Theory do
     circle_text = analyze_circle_position(root)
 
     # 2. Accidentals Analysis
-    altered_notes = Enum.filter(scale_notes, fn n ->
-      String.contains?(n.name, "#") or String.contains?(n.name, "b")
-    end)
+    altered_notes =
+      Enum.filter(scale_notes, fn n ->
+        String.contains?(n.name, "#") or String.contains?(n.name, "b")
+      end)
 
     accidentals_count = length(altered_notes)
-    altered_names = Enum.map(altered_notes, & &1.name) |> Enum.join(", ")
+    altered_names = Enum.map_join(altered_notes, ", ", & &1.name)
     acc_type = if use_flats, do: "bemoles (b)", else: "sostenidos (#)"
 
-    key_sig_text = if accidentals_count == 0 do
-      "Esta escala es 'natural', no tiene alteraciones (todas teclas blancas)."
-    else
-      base_text = "Tiene #{accidentals_count} #{acc_type} (#{altered_names})."
-      explanation = explain_scale_character(scale_type)
-      "#{base_text} #{explanation}"
-    end
+    key_sig_text =
+      if accidentals_count == 0 do
+        "Esta escala es 'natural', no tiene alteraciones (todas teclas blancas)."
+      else
+        base_text = "Tiene #{accidentals_count} #{acc_type} (#{altered_names})."
+        explanation = explain_scale_character(scale_type)
+        "#{base_text} #{explanation}"
+      end
 
     # 3. Formula
     formula_text = get_scale_formula(scale_type)
@@ -178,54 +195,93 @@ defmodule MusicIan.MusicCore.Theory do
     }
   end
 
-  defp analyze_circle_position(root) do
-    case rem(root, 12) do
-      0 -> "Centro tonal (Do). El punto de partida puro, sin alteraciones."
-      7 -> "Dominante (Sol). Un paso a la derecha. Introduce el Fa#."
-      2 -> "Dos pasos a la derecha (Re). Brillo creciente con Fa# y Do#."
-      9 -> "Tres pasos a la derecha (La). Tonalidad brillante y enérgica."
-      4 -> "Cuatro pasos a la derecha (Mi). Muy brillante, usada en guitarra."
-      11 -> "Cinco pasos a la derecha (Si). Tensión armónica alta."
-      6 -> "El Tritono (Fa#/Solb). El punto opuesto a Do. Máxima tensión."
-      1 -> "Cinco pasos a la izquierda (Reb). Oscuro, cálido y romántico."
-      8 -> "Cuatro pasos a la izquierda (Lab). Profundo y solemne."
-      3 -> "Tres pasos a la izquierda (Mib). Heroico y majestuoso."
-      10 -> "Dos pasos a la izquierda (Sib). Suave, común en vientos."
-      5 -> "Subdominante (Fa). Un paso a la izquierda. Introduce el Sib."
-      _ -> "Una tonalidad intermedia con color propio."
-    end
-  end
+  defp analyze_circle_position(root), do: circle_position_text(rem(root, 12))
 
-  defp explain_scale_character(scale_type) do
-    case scale_type do
-      :major -> "Sigue el patrón estándar W-W-H-W-W-W-H."
-      :natural_minor -> "Relativa menor. Comparte armadura con su mayor."
-      :harmonic_minor -> "Se eleva la 7ma nota accidentalmente para crear un acorde dominante."
-      :melodic_minor -> "Se elevan 6ta y 7ma al subir para suavizar la conducción de voces."
-      :blues -> "Añade notas de paso cromáticas (Blue Notes) para expresión."
-      :dorian -> "Menor con la 6ta elevada, lo que le da un brillo especial."
-      :mixolydian -> "Mayor con la 7ma rebajada, eliminando la tensión de la sensible."
-      :lydian -> "Mayor con la 4ta elevada (#4), creando un sonido etéreo."
-      :phrygian -> "Menor con la 2da rebajada (b2), sonido muy oscuro."
-      _ -> "Las alteraciones definen su sonoridad única."
-    end
-  end
+  defp circle_position_text(0),
+    do: "Centro tonal (Do). El punto de partida puro, sin alteraciones."
 
-  defp get_scale_formula(scale_type) do
-    case scale_type do
-      :major -> "Patrón: T-T-S-T-T-T-S. La referencia absoluta de la música occidental."
-      :natural_minor -> "Patrón: T-S-T-T-S-T-T. Baja la 3ra, 6ta y 7ma respecto a la Mayor."
-      :harmonic_minor -> "Menor con 7ma elevada. Crea el sonido 'árabe' o 'clásico' característico."
-      :melodic_minor -> "Sube 6ta y 7ma al subir. Suaviza la melodía para el jazz y clásica."
-      :dorian -> "Menor con 6ta mayor. Menos triste, más 'funky' y medieval."
-      :phrygian -> "Menor con 2da menor. El sonido del Flamenco y Metal."
-      :lydian -> "Mayor con 4ta aumentada (#4). Sonido mágico, de película o sueño."
-      :mixolydian -> "Mayor con 7ma menor (b7). El sonido del Rock y Blues clásico."
-      :locrian -> "Disminuido. La escala más inestable y tensa de todas."
-      :pentatonic_major -> "Solo 5 notas. Sin semitonos. Imposible sonar mal."
-      :pentatonic_minor -> "Solo 5 notas. La base de la improvisación en Rock y Blues."
-      :blues -> "Pentatónica menor + Blue Note (b5). El alma del Blues."
-      _ -> "Una estructura interválica única."
-    end
-  end
+  defp circle_position_text(7), do: "Dominante (Sol). Un paso a la derecha. Introduce el Fa#."
+  defp circle_position_text(2), do: "Dos pasos a la derecha (Re). Brillo creciente con Fa# y Do#."
+
+  defp circle_position_text(9),
+    do: "Tres pasos a la derecha (La). Tonalidad brillante y enérgica."
+
+  defp circle_position_text(4),
+    do: "Cuatro pasos a la derecha (Mi). Muy brillante, usada en guitarra."
+
+  defp circle_position_text(11), do: "Cinco pasos a la derecha (Si). Tensión armónica alta."
+
+  defp circle_position_text(6),
+    do: "El Tritono (Fa#/Solb). El punto opuesto a Do. Máxima tensión."
+
+  defp circle_position_text(1),
+    do: "Cinco pasos a la izquierda (Reb). Oscuro, cálido y romántico."
+
+  defp circle_position_text(8), do: "Cuatro pasos a la izquierda (Lab). Profundo y solemne."
+  defp circle_position_text(3), do: "Tres pasos a la izquierda (Mib). Heroico y majestuoso."
+  defp circle_position_text(10), do: "Dos pasos a la izquierda (Sib). Suave, común en vientos."
+  defp circle_position_text(5), do: "Subdominante (Fa). Un paso a la izquierda. Introduce el Sib."
+  defp circle_position_text(_), do: "Una tonalidad intermedia con color propio."
+
+  defp explain_scale_character(:major), do: "Sigue el patrón estándar W-W-H-W-W-W-H."
+
+  defp explain_scale_character(:natural_minor),
+    do: "Relativa menor. Comparte armadura con su mayor."
+
+  defp explain_scale_character(:harmonic_minor),
+    do: "Se eleva la 7ma nota accidentalmente para crear un acorde dominante."
+
+  defp explain_scale_character(:melodic_minor),
+    do: "Se elevan 6ta y 7ma al subir para suavizar la conducción de voces."
+
+  defp explain_scale_character(:blues),
+    do: "Añade notas de paso cromáticas (Blue Notes) para expresión."
+
+  defp explain_scale_character(:dorian),
+    do: "Menor con la 6ta elevada, lo que le da un brillo especial."
+
+  defp explain_scale_character(:mixolydian),
+    do: "Mayor con la 7ma rebajada, eliminando la tensión de la sensible."
+
+  defp explain_scale_character(:lydian),
+    do: "Mayor con la 4ta elevada (#4), creando un sonido etéreo."
+
+  defp explain_scale_character(:phrygian),
+    do: "Menor con la 2da rebajada (b2), sonido muy oscuro."
+
+  defp explain_scale_character(_), do: "Las alteraciones definen su sonoridad única."
+
+  defp get_scale_formula(:major),
+    do: "Patrón: T-T-S-T-T-T-S. La referencia absoluta de la música occidental."
+
+  defp get_scale_formula(:natural_minor),
+    do: "Patrón: T-S-T-T-S-T-T. Baja la 3ra, 6ta y 7ma respecto a la Mayor."
+
+  defp get_scale_formula(:harmonic_minor),
+    do: "Menor con 7ma elevada. Crea el sonido 'árabe' o 'clásico'."
+
+  defp get_scale_formula(:melodic_minor),
+    do: "Sube 6ta y 7ma al subir. Suaviza la melodía para jazz y clásica."
+
+  defp get_scale_formula(:dorian),
+    do: "Menor con 6ta mayor. Menos triste, más 'funky' y medieval."
+
+  defp get_scale_formula(:phrygian), do: "Menor con 2da menor. El sonido del Flamenco y Metal."
+
+  defp get_scale_formula(:lydian),
+    do: "Mayor con 4ta aumentada (#4). Sonido mágico, de película o sueño."
+
+  defp get_scale_formula(:mixolydian),
+    do: "Mayor con 7ma menor (b7). El sonido del Rock y Blues clásico."
+
+  defp get_scale_formula(:locrian), do: "Disminuido. La escala más inestable y tensa de todas."
+
+  defp get_scale_formula(:pentatonic_major),
+    do: "Solo 5 notas. Sin semitonos. Imposible sonar mal."
+
+  defp get_scale_formula(:pentatonic_minor),
+    do: "Solo 5 notas. La base de la improvisación en Rock y Blues."
+
+  defp get_scale_formula(:blues), do: "Pentatónica menor + Blue Note (b5). El alma del Blues."
+  defp get_scale_formula(_), do: "Una estructura interválica única."
 end

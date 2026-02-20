@@ -26,13 +26,14 @@ lessons_module_05 = [
     motor_complexity: "basic",
     duration_minutes: 28,
     order: 1,
+    time_signature: "4/4",
     steps: [
-      %{text: "Ve el pentagrama: 5 líneas", note: 0, hint: "De abajo hacia arriba", finger: 0, duration: 0},
-      %{text: "Entre las líneas hay 4 espacios", note: 0, hint: "Los espacios vacíos", finger: 0, duration: 0},
-      %{text: "Una nota puede estar EN una línea", note: 0, hint: "En la línea misma", finger: 0, duration: 0},
-      %{text: "O una nota puede estar EN un espacio", note: 0, hint: "Entre dos líneas", finger: 0, duration: 0},
-      %{text: "Cuenta las líneas: 1-2-3-4-5 de abajo a arriba", note: 0, hint: "Número de cada línea", finger: 0, duration: 0},
-      %{text: "Señala cada línea y cada espacio", note: 0, hint: "Familiaridad", finger: 0, duration: 0}
+      %{text: "Ve el pentagrama: 5 líneas", note: 0, hint: "De abajo hacia arriba", finger: 0, duration: 1},
+      %{text: "Entre las líneas hay 4 espacios", note: 0, hint: "Los espacios vacíos", finger: 0, duration: 1},
+      %{text: "Una nota puede estar EN una línea", note: 0, hint: "En la línea misma", finger: 0, duration: 1},
+      %{text: "O una nota puede estar EN un espacio", note: 0, hint: "Entre dos líneas", finger: 0, duration: 1},
+      %{text: "Cuenta las líneas: 1-2-3-4-5 de abajo a arriba", note: 0, hint: "Número de cada línea", finger: 0, duration: 1},
+      %{text: "Señala cada línea y cada espacio", note: 0, hint: "Familiaridad", finger: 0, duration: 1}
     ]
   },
 
@@ -52,13 +53,14 @@ lessons_module_05 = [
     motor_complexity: "basic",
     duration_minutes: 29,
     order: 2,
+    time_signature: "4/4",
     steps: [
-      %{text: "Mira la clave de Sol: una espiral", note: 0, hint: "Símbolo bonito", finger: 0, duration: 0},
-      %{text: "La espiral rodea la 2da línea", note: 0, hint: "Eso es Sol (G)", finger: 0, duration: 0},
-      %{text: "Por eso se llama 'Clave de Sol'", note: 0, hint: "La nota Sol en la 2da línea", finger: 0, duration: 0},
-      %{text: "Si Sol está en la 2da línea, donde está Do?", note: 0, hint: "Abajo", finger: 0, duration: 0},
-      %{text: "Do Central está EN un espacio (línea 1)", note: 0, hint: "El espacio más bajo", finger: 0, duration: 0},
-      %{text: "Identifica: Línea 2 = Sol, Espacio 1 = Do", note: 0, hint: "Puntos de referencia", finger: 0, duration: 0}
+      %{text: "Mira la clave de Sol: una espiral", note: 0, hint: "Símbolo bonito", finger: 0, duration: 1},
+      %{text: "La espiral rodea la 2da línea", note: 0, hint: "Eso es Sol (G)", finger: 0, duration: 1},
+      %{text: "Por eso se llama 'Clave de Sol'", note: 0, hint: "La nota Sol en la 2da línea", finger: 0, duration: 1},
+      %{text: "Si Sol está en la 2da línea, donde está Do?", note: 0, hint: "Abajo", finger: 0, duration: 1},
+      %{text: "Do Central está EN un espacio (línea 1)", note: 0, hint: "El espacio más bajo", finger: 0, duration: 1},
+      %{text: "Identifica: Línea 2 = Sol, Espacio 1 = Do", note: 0, hint: "Puntos de referencia", finger: 0, duration: 1}
     ]
   },
 
@@ -78,13 +80,14 @@ lessons_module_05 = [
     motor_complexity: "basic",
     duration_minutes: 31,
     order: 3,
+    time_signature: "4/4",
     steps: [
-      %{text: "Línea 1 (abajo) = Mi", note: 64, hint: "Primera línea desde abajo", finger: 3, duration: 0},
-      %{text: "Línea 2 = Sol", note: 67, hint: "Segunda línea", finger: 5, duration: 0},
-      %{text: "Línea 3 (centro) = Si", note: 71, hint: "Línea central", finger: 0, duration: 0},
-      %{text: "Línea 4 = Re", note: 74, hint: "Cuarta línea", finger: 0, duration: 0},
-      %{text: "Línea 5 (arriba) = Fa", note: 77, hint: "Línea superior", finger: 0, duration: 0},
-      %{text: "Mnemónico: Mi-Sol-Si-Re-Fa", note: 0, hint: "Recuerda esto", finger: 0, duration: 0}
+      %{text: "Línea 1 (abajo) = Mi", note: 64, hint: "Primera línea desde abajo", finger: 3, duration: 1},
+      %{text: "Línea 2 = Sol", note: 67, hint: "Segunda línea", finger: 5, duration: 1},
+      %{text: "Línea 3 (centro) = Si", note: 71, hint: "Línea central", finger: 0, duration: 1},
+      %{text: "Línea 4 = Re", note: 74, hint: "Cuarta línea", finger: 0, duration: 1},
+      %{text: "Línea 5 (arriba) = Fa", note: 77, hint: "Línea superior", finger: 0, duration: 1},
+      %{text: "Mnemónico: Mi-Sol-Si-Re-Fa", note: 0, hint: "Recuerda esto", finger: 0, duration: 1}
     ]
   },
 
@@ -104,13 +107,14 @@ lessons_module_05 = [
     motor_complexity: "basic",
     duration_minutes: 34,
     order: 4,
+    time_signature: "4/4",
     steps: [
-      %{text: "Espacio 1 (entre líneas 1-2) = Fa", note: 65, hint: "Primer espacio", finger: 4, duration: 0},
-      %{text: "Espacio 2 (entre líneas 2-3) = La", note: 69, hint: "Segundo espacio", finger: 0, duration: 0},
-      %{text: "Espacio 3 (entre líneas 3-4) = Do", note: 72, hint: "Tercer espacio", finger: 1, duration: 0},
-      %{text: "Espacio 4 (entre líneas 4-5) = Mi", note: 76, hint: "Cuarto espacio", finger: 3, duration: 0},
-      %{text: "Mnemónico: FACE", note: 0, hint: "Fa-La-Do-Mi", finger: 0, duration: 0},
-      %{text: "O: Fa-La-Do-Mi en orden", note: 0, hint: "Memorizalo", finger: 0, duration: 0}
+      %{text: "Espacio 1 (entre líneas 1-2) = Fa", note: 65, hint: "Primer espacio", finger: 4, duration: 1},
+      %{text: "Espacio 2 (entre líneas 2-3) = La", note: 69, hint: "Segundo espacio", finger: 0, duration: 1},
+      %{text: "Espacio 3 (entre líneas 3-4) = Do", note: 72, hint: "Tercer espacio", finger: 1, duration: 1},
+      %{text: "Espacio 4 (entre líneas 4-5) = Mi", note: 76, hint: "Cuarto espacio", finger: 3, duration: 1},
+      %{text: "Mnemónico: FACE", note: 0, hint: "Fa-La-Do-Mi", finger: 0, duration: 1},
+      %{text: "O: Fa-La-Do-Mi en orden", note: 0, hint: "Memorizalo", finger: 0, duration: 1}
     ]
   },
 
@@ -130,13 +134,14 @@ lessons_module_05 = [
     motor_complexity: "intermediate",
     duration_minutes: 38,
     order: 5,
+    time_signature: "4/4",
     steps: [
-      %{text: "Nota en línea 1: ¿Cuál es? (Respuesta: Mi)", note: 64, hint: "¿Dónde está en el teclado?", finger: 3, duration: 0},
-      %{text: "Nota en espacio 1: ¿Cuál es? (Respuesta: Fa)", note: 65, hint: "Identifica y toca", finger: 4, duration: 0},
-      %{text: "Nota en línea 2: ¿Cuál es? (Respuesta: Sol)", note: 67, hint: "Toca en el teclado", finger: 5, duration: 0},
-      %{text: "Nota en espacio 2: ¿Cuál es? (Respuesta: La)", note: 69, hint: "¿Dónde en el teclado?", finger: 0, duration: 0},
-      %{text: "Nota en línea 3: ¿Cuál es? (Respuesta: Si)", note: 71, hint: "Centro del pentagrama", finger: 0, duration: 0},
-      %{text: "Practica leyendo 5 notas aleatorias", note: 64, hint: "Identifica cada una", finger: 3, duration: 0}
+      %{text: "Nota en línea 1: ¿Cuál es? (Respuesta: Mi)", note: 64, hint: "¿Dónde está en el teclado?", finger: 3, duration: 1},
+      %{text: "Nota en espacio 1: ¿Cuál es? (Respuesta: Fa)", note: 65, hint: "Identifica y toca", finger: 4, duration: 1},
+      %{text: "Nota en línea 2: ¿Cuál es? (Respuesta: Sol)", note: 67, hint: "Toca en el teclado", finger: 5, duration: 1},
+      %{text: "Nota en espacio 2: ¿Cuál es? (Respuesta: La)", note: 69, hint: "¿Dónde en el teclado?", finger: 0, duration: 1},
+      %{text: "Nota en línea 3: ¿Cuál es? (Respuesta: Si)", note: 71, hint: "Centro del pentagrama", finger: 0, duration: 1},
+      %{text: "Practica leyendo 5 notas aleatorias", note: 64, hint: "Identifica cada una", finger: 3, duration: 1}
     ]
   },
 
@@ -156,13 +161,14 @@ lessons_module_05 = [
     motor_complexity: "intermediate",
     duration_minutes: 43,
     order: 6,
+    time_signature: "4/4",
     steps: [
-      %{text: "Melodía 1: Do-Re-Mi (notas que suben)", note: 60, hint: "Escala simple", finger: 1, duration: 0},
-      %{text: "Lee en el pentagrama: nota 1 = Do", note: 60, hint: "¿Dónde está en el teclado?", finger: 1, duration: 0},
-      %{text: "Lee nota 2 = Re", note: 62, hint: "Siguiente", finger: 2, duration: 0},
-      %{text: "Lee nota 3 = Mi", note: 64, hint: "Siguiente", finger: 3, duration: 0},
-      %{text: "Toca la melodía: Do-Re-Mi en orden", note: 60, hint: "Fluida", finger: 1, duration: 0},
-      %{text: "Melodía 2: Sol-La-Si-Do (más notas)", note: 67, hint: "Lee y toca", finger: 5, duration: 0}
+      %{text: "Melodía 1: Do-Re-Mi (notas que suben)", note: 60, hint: "Escala simple", finger: 1, duration: 1},
+      %{text: "Lee en el pentagrama: nota 1 = Do", note: 60, hint: "¿Dónde está en el teclado?", finger: 1, duration: 1},
+      %{text: "Lee nota 2 = Re", note: 62, hint: "Siguiente", finger: 2, duration: 1},
+      %{text: "Lee nota 3 = Mi", note: 64, hint: "Siguiente", finger: 3, duration: 1},
+      %{text: "Toca la melodía: Do-Re-Mi en orden", note: 60, hint: "Fluida", finger: 1, duration: 1},
+      %{text: "Melodía 2: Sol-La-Si-Do (más notas)", note: 67, hint: "Lee y toca", finger: 5, duration: 1}
     ]
   },
 
@@ -182,12 +188,15 @@ lessons_module_05 = [
     motor_complexity: "intermediate",
     duration_minutes: 48,
     order: 7,
+    time_signature: "4/4",
     steps: [
       %{text: "Lee: Do redonda (óvalo blanco sin tallo)", note: 60, hint: "Sostén 4 tiempos", finger: 1, duration: 4},
       %{text: "Lee: Re blanca (óvalo blanco con tallo)", note: 62, hint: "Sostén 2 tiempos", finger: 2, duration: 2},
       %{text: "Lee: Mi negra (punto negro con tallo)", note: 64, hint: "1 tiempo", finger: 3, duration: 1},
       %{text: "Lee: Fa negra", note: 65, hint: "1 tiempo", finger: 4, duration: 1},
-      %{text: "Lee una fila: Do redonda + Re blanca + Mi blanca", note: 60, hint: "4+2+2=8 tiempos", finger: 1, duration: 8},
+      %{text: "Lee: Do — redonda (4 tiempos)", note: 60, hint: "Óvalo blanco sin tallo", finger: 1, duration: 4},
+      %{text: "Lee: Re — blanca (2 tiempos)", note: 62, hint: "Óvalo blanco con tallo", finger: 2, duration: 2},
+      %{text: "Lee: Mi — blanca (2 tiempos)", note: 64, hint: "Óvalo blanco con tallo — 4+2+2=8 tiempos ✓", finger: 3, duration: 2},
       %{text: "Lee otra fila: Sol negra-La negra-Si blanca", note: 67, hint: "1+1+2=4 tiempos", finger: 5, duration: 4}
     ]
   },
@@ -208,13 +217,20 @@ lessons_module_05 = [
     motor_complexity: "intermediate",
     duration_minutes: 48,
     order: 8,
+    time_signature: "4/4",
     steps: [
       %{text: "Compás 1: Lee Do redonda", note: 60, hint: "Óvalo blanco", finger: 1, duration: 4},
       %{text: "Compás 2: Lee Re blanca + Mi blanca", note: 62, hint: "Dos óvalos blancos", finger: 2, duration: 4},
       %{text: "Compás 3: Lee escala de negras: Fa-Sol-La-Si", note: 65, hint: "Cuatro puntos negros", finger: 4, duration: 4},
       %{text: "Compás 4: Lee Do-Si-La-Sol (negras bajando)", note: 72, hint: "Bajada", finger: 5, duration: 4},
-      %{text: "Toca los 4 compases sin parar", note: 60, hint: "Pieza pequeña", finger: 1, duration: 16},
-      %{text: "¡Acabas de leer y tocar música! ¡Felicidades!", note: 60, hint: "Solfeo dominado", finger: 1, duration: 0}
+      %{text: "Compás 1 — Do: redonda", note: 60, hint: "Sostén 4 tiempos", finger: 1, duration: 4},
+      %{text: "Compás 2 — Re: blanca", note: 62, hint: "2 tiempos", finger: 2, duration: 2},
+      %{text: "Compás 2 — Mi: blanca", note: 64, hint: "2 tiempos", finger: 3, duration: 2},
+      %{text: "Compás 3 — Fa: negra", note: 65, hint: "1 tiempo", finger: 4, duration: 1},
+      %{text: "Compás 3 — Sol: negra", note: 67, hint: "1 tiempo", finger: 5, duration: 1},
+      %{text: "Compás 3 — La: negra", note: 69, hint: "1 tiempo", finger: 4, duration: 1},
+      %{text: "Compás 3 — Si: negra (1+1+1+1=4 ✓)", note: 71, hint: "Completa el compás", finger: 3, duration: 1},
+      %{text: "¡Acabas de leer y tocar música! ¡Felicidades!", note: 0, hint: "Solfeo dominado", finger: 1, duration: 1}
     ]
   }
 ]
@@ -222,7 +238,11 @@ lessons_module_05 = [
 IO.puts("🎵 Inserting #{Enum.count(lessons_module_05)} lessons...")
 
 Enum.each(lessons_module_05, fn lesson ->
-  MusicIan.Repo.insert!(MusicIan.Curriculum.Lesson.changeset(%MusicIan.Curriculum.Lesson{}, lesson))
+  MusicIan.Repo.insert!(
+    MusicIan.Curriculum.Lesson.changeset(%MusicIan.Curriculum.Lesson{}, lesson),
+    on_conflict: :replace_all,
+    conflict_target: :id
+  )
 end)
 
 IO.puts("✅ Module 5 (Solfège - Staff Reading) lessons inserted!")

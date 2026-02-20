@@ -3,7 +3,7 @@ defmodule MusicIan.MusicCore.Scale do
   Handles the generation and manipulation of musical scales.
   """
 
-  alias MusicIan.MusicCore.{Note, Chord}
+  alias MusicIan.MusicCore.{Chord, Note}
 
   @type scale_type ::
           :major
@@ -20,17 +20,26 @@ defmodule MusicIan.MusicCore.Scale do
           | :locrian
 
   @type t :: %__MODULE__{
-           root: Note.t(),
-           type: scale_type(),
-           notes: [Note.t()],
-           note_explanations: [map()],
-           description: String.t(),
-           mood: String.t(),
-           suggested_keys: [integer()],
-           suggestion_reason: String.t()
-         }
+          root: Note.t(),
+          type: scale_type(),
+          notes: [Note.t()],
+          note_explanations: [map()],
+          description: String.t(),
+          mood: String.t(),
+          suggested_keys: [integer()],
+          suggestion_reason: String.t()
+        }
 
-  defstruct [:root, :type, :notes, :note_explanations, :description, :mood, :suggested_keys, :suggestion_reason]
+  defstruct [
+    :root,
+    :type,
+    :notes,
+    :note_explanations,
+    :description,
+    :mood,
+    :suggested_keys,
+    :suggestion_reason
+  ]
 
   # Intervals in semitones from the root
   @intervals %{
@@ -53,73 +62,93 @@ defmodule MusicIan.MusicCore.Scale do
     major: %{
       description: "La escala fundamental de la música occidental. Base de la tonalidad mayor.",
       mood: "Alegre, Brillante, Estable",
-      suggested_keys: [0, 7, 5], # C, G, F
-      suggestion_reason: "Son las tonalidades más comunes y fáciles de leer en partitura (pocas alteraciones)."
+      # C, G, F
+      suggested_keys: [0, 7, 5],
+      suggestion_reason:
+        "Son las tonalidades más comunes y fáciles de leer en partitura (pocas alteraciones)."
     },
     natural_minor: %{
       description: "La escala menor estándar (Eólica). Misma armadura que su relativa mayor.",
       mood: "Triste, Serio, Melancólico",
-      suggested_keys: [9, 4, 2], # A, E, D
-      suggestion_reason: "Tonalidades menores naturales con pocas alteraciones, muy usadas en pop y baladas."
+      # A, E, D
+      suggested_keys: [9, 4, 2],
+      suggestion_reason:
+        "Tonalidades menores naturales con pocas alteraciones, muy usadas en pop y baladas."
     },
     harmonic_minor: %{
-      description: "Variación de la menor con la 7ma elevada para crear un acorde dominante fuerte.",
+      description:
+        "Variación de la menor con la 7ma elevada para crear un acorde dominante fuerte.",
       mood: "Exótico, Clásico, Tensión dramática",
-      suggested_keys: [9, 4], # A, E
-      suggestion_reason: "Comunes en música clásica y guitarra española por la facilidad de digitación."
+      # A, E
+      suggested_keys: [9, 4],
+      suggestion_reason:
+        "Comunes en música clásica y guitarra española por la facilidad de digitación."
     },
     melodic_minor: %{
       description: "Suaviza el salto de la armónica elevando también la 6ta al subir.",
       mood: "Jazz, Sofisticado, Fluido",
-      suggested_keys: [0, 7], # C, G (Jazz standard keys)
-      suggestion_reason: "Estándares de Jazz (como 'Autumn Leaves') suelen modular a estas tonalidades."
+      # C, G (Jazz standard keys)
+      suggested_keys: [0, 7],
+      suggestion_reason:
+        "Estándares de Jazz (como 'Autumn Leaves') suelen modular a estas tonalidades."
     },
     pentatonic_major: %{
       description: "Escala de 5 notas. Omite los semitonos (4ta y 7ma) para evitar disonancias.",
       mood: "Folk, Simple, Pacífico",
-      suggested_keys: [0, 7, 5], # C, G, F
+      # C, G, F
+      suggested_keys: [0, 7, 5],
       suggestion_reason: "Ideales para melodías vocales sencillas y música folk/country."
     },
     pentatonic_minor: %{
       description: "La base del Rock y el Blues. Omite 2da y 6ta.",
       mood: "Rock, Blues, Potente",
-      suggested_keys: [4, 9, 7], # E, A, G (Guitar friendly)
-      suggestion_reason: "Favoritas de los guitarristas por el uso de cuerdas al aire (Mi, La, Sol)."
+      # E, A, G (Guitar friendly)
+      suggested_keys: [4, 9, 7],
+      suggestion_reason:
+        "Favoritas de los guitarristas por el uso de cuerdas al aire (Mi, La, Sol)."
     },
     blues: %{
       description: "Pentatónica menor con la 'Blue Note' (b5) añadida.",
       mood: "Bluesy, Soulful, Tensión expresiva",
-      suggested_keys: [4, 9, 7], # E, A, G (Guitar friendly)
+      # E, A, G (Guitar friendly)
+      suggested_keys: [4, 9, 7],
       suggestion_reason: "La 'Santísima Trinidad' del Blues en guitarra: Mi, La y Sol."
     },
     dorian: %{
       description: "Modo menor con la 6ta mayor. Característico del Funk y Jazz Modal.",
       mood: "Groovy, Sofisticado, Menor pero brillante",
-      suggested_keys: [2, 9, 7], # D, A, G (So What, etc)
-      suggestion_reason: "Clásicos como 'So What' (Miles Davis) o 'Oye Como Va' usan estas tonalidades."
+      # D, A, G (So What, etc)
+      suggested_keys: [2, 9, 7],
+      suggestion_reason:
+        "Clásicos como 'So What' (Miles Davis) o 'Oye Como Va' usan estas tonalidades."
     },
     phrygian: %{
       description: "Modo menor con la 2da menor. Sonido español o metalero.",
       mood: "Oscuro, Flamenco, Tenso",
-      suggested_keys: [4, 11], # E, B (Flamenco guitar)
-      suggestion_reason: "La cadencia andaluza y el metal suenan poderosos en Mi (cuerda más grave de guitarra)."
+      # E, B (Flamenco guitar)
+      suggested_keys: [4, 11],
+      suggestion_reason:
+        "La cadencia andaluza y el metal suenan poderosos en Mi (cuerda más grave de guitarra)."
     },
     lydian: %{
       description: "Modo mayor con la 4ta aumentada (#4). Sonido de ensueño.",
       mood: "Mágico, Espacial, Flotante",
-      suggested_keys: [5, 0], # F, C
+      # F, C
+      suggested_keys: [5, 0],
       suggestion_reason: "Fa Lidio es natural (todas teclas blancas) y muy brillante."
     },
     mixolydian: %{
       description: "Modo mayor con la 7ma menor (b7). Base del Rock clásico.",
       mood: "Rock, Bluesy, Mayor pero relajado",
-      suggested_keys: [7, 2, 9], # G, D, A
+      # G, D, A
+      suggested_keys: [7, 2, 9],
       suggestion_reason: "El sonido de AC/DC y el Rock clásico. Sol y La son muy potentes."
     },
     locrian: %{
       description: "Modo disminuido. Muy inestable debido a la 5ta disminuida.",
       mood: "Disonante, Inestable, Terror",
-      suggested_keys: [11], # B
+      # B
+      suggested_keys: [11],
       suggestion_reason: "Si Locrio es el único modo 'natural' (teclas blancas) de este tipo."
     }
   }
@@ -136,13 +165,20 @@ defmodule MusicIan.MusicCore.Scale do
     new(root_note, type, opts)
   end
 
-  def new(%Note{} = root, type, _opts) do
+  def new(%Note{} = root, type, opts) do
     intervals = Map.get(@intervals, type, Map.get(@intervals, :major))
-    meta = Map.get(@metadata, type, %{description: "", mood: "", suggested_keys: [], suggestion_reason: ""})
-    
+
+    meta =
+      Map.get(@metadata, type, %{
+        description: "",
+        mood: "",
+        suggested_keys: [],
+        suggestion_reason: ""
+      })
+
     # Generate notes with proper enharmonic spelling based on scale degree
-    notes = generate_scale_notes(root, intervals, type)
-    
+    notes = generate_scale_notes(root, intervals, type, opts)
+
     # Generate explanations for each note
     note_explanations = generate_note_explanations(root, intervals, type, notes)
 
@@ -159,16 +195,20 @@ defmodule MusicIan.MusicCore.Scale do
   end
 
   @doc false
-  defp generate_scale_notes(root, intervals, _scale_type) do
-    # Determine if we should use sharps or flats for this root
-    use_flats = should_use_flats(root.midi)
-    
+  defp generate_scale_notes(root, intervals, _scale_type, opts) do
+    # Respect explicit use_flats opt; otherwise auto-detect from root
+    use_flats =
+      case Keyword.fetch(opts, :use_flats) do
+        {:ok, val} -> val
+        :error -> should_use_flats(root.midi)
+      end
+
     # Map of scale degrees to note names (1-7 corresponding to root, 2nd, 3rd, etc)
     # This ensures proper spelling for each degree
     natural_order = ~w(C D E F G A B)
     root_pitch = rem(root.midi, 12)
-    root_index = get_natural_note_index(root_pitch)
-    
+    root_index = get_natural_note_index(root_pitch, use_flats)
+
     intervals
     |> Enum.with_index()
     |> Enum.map(fn {interval, degree} ->
@@ -176,11 +216,12 @@ defmodule MusicIan.MusicCore.Scale do
       # Calculate which natural note this should be named
       natural_note_index = rem(root_index + degree, 7)
       natural_note_name = Enum.at(natural_order, natural_note_index)
-      
+
       # Now determine if it needs an accidental
       note_with_accidental = add_accidental_for_degree(midi, natural_note_name, use_flats)
-      
-      Note.new(midi, [use_flats: false])  # Create note with calculated name
+
+      # Create note with calculated name
+      Note.new(midi, use_flats: false)
       |> Map.put(:name, note_with_accidental)
     end)
   end
@@ -188,80 +229,119 @@ defmodule MusicIan.MusicCore.Scale do
   @doc false
   defp should_use_flats(root_midi) do
     pitch_class = rem(root_midi, 12)
-    # Flats: 1(Db), 3(Eb), 5(F), 6(Gb), 8(Ab), 10(Bb)
-    pitch_class in [1, 3, 5, 6, 8, 10]
+    # Flats: Db(1), Eb(3), F(5), Ab(8), Bb(10)
+    # Pitch class 6 is ambiguous (F#/Gb) — default to sharps (F# major)
+    pitch_class in [1, 3, 5, 8, 10]
   end
 
-  @doc false
-  defp get_natural_note_index(pitch_class) do
-    case pitch_class do
-      0 -> 0   # C
-      2 -> 1   # D
-      4 -> 2   # E
-      5 -> 3   # F
-      7 -> 4   # G
-      9 -> 5   # A
-      11 -> 6  # B
-      # For accidentals, find closest natural note
-      1 -> 0   # C# -> C degree
-      3 -> 2   # D# -> E degree  (or Eb -> D degree, handled by context)
-      6 -> 3   # F# -> F degree
-      8 -> 4   # G# -> G degree
-      10 -> 5  # A# -> A degree
-      _ -> 0
-    end
-  end
+  # Natural note index by pitch class.
+  # For accidentals (black keys), the index depends on whether we use sharps or flats:
+  #   sharps: C#=C(0), D#=D(1), F#=F(3), G#=G(4), A#=A(5)
+  #   flats:  Db=D(1), Eb=E(2), Gb=G(4), Ab=A(5), Bb=B(6)
+  defp get_natural_note_index(pc, use_flats \\ false)
+  # C
+  defp get_natural_note_index(0, _), do: 0
+  # C#
+  defp get_natural_note_index(1, false), do: 0
+  # Db
+  defp get_natural_note_index(1, true), do: 1
+  # D
+  defp get_natural_note_index(2, _), do: 1
+  # D# (but rarely used)
+  defp get_natural_note_index(3, false), do: 2
+  # Eb
+  defp get_natural_note_index(3, true), do: 2
+  # E
+  defp get_natural_note_index(4, _), do: 2
+  # F
+  defp get_natural_note_index(5, _), do: 3
+  # F#
+  defp get_natural_note_index(6, false), do: 3
+  # Gb
+  defp get_natural_note_index(6, true), do: 4
+  # G
+  defp get_natural_note_index(7, _), do: 4
+  # G#
+  defp get_natural_note_index(8, false), do: 4
+  # Ab
+  defp get_natural_note_index(8, true), do: 5
+  # A
+  defp get_natural_note_index(9, _), do: 5
+  # A#
+  defp get_natural_note_index(10, false), do: 5
+  # Bb
+  defp get_natural_note_index(10, true), do: 6
+  # B
+  defp get_natural_note_index(11, _), do: 6
+  defp get_natural_note_index(_, _), do: 0
 
   @doc false
-  defp add_accidental_for_degree(midi, natural_note_name, use_flats) do
+  defp add_accidental_for_degree(midi, natural_note_name, _use_flats) do
     pitch_class = rem(midi, 12)
-    
-    # Map pitch classes to notes with accidentals
-    note_map_sharps = %{
-      0 => "C",  1 => "C#",  2 => "D",  3 => "D#",  4 => "E",
-      5 => "F",  6 => "F#",  7 => "G",  8 => "G#",  9 => "A",
-      10 => "A#", 11 => "B"
+
+    # Pitch class of the natural (unaltered) version of the target letter
+    natural_pitch = %{
+      "C" => 0,
+      "D" => 2,
+      "E" => 4,
+      "F" => 5,
+      "G" => 7,
+      "A" => 9,
+      "B" => 11
     }
-    
-    note_map_flats = %{
-      0 => "C",  1 => "Db",  2 => "D",  3 => "Eb",  4 => "E",
-      5 => "F",  6 => "Gb",  7 => "G",  8 => "Ab",  9 => "A",
-      10 => "Bb", 11 => "B"
-    }
-    
-    note_map = if use_flats, do: note_map_flats, else: note_map_sharps
-    Map.get(note_map, pitch_class, natural_note_name)
+
+    base_pc = Map.get(natural_pitch, natural_note_name, pitch_class)
+
+    # Difference between actual pitch class and natural pitch class (mod 12, range -1..+1)
+    diff = Integer.mod(pitch_class - base_pc, 12)
+    # Normalize to range -2..2 (double flat/sharp)
+    diff =
+      cond do
+        diff > 6 -> diff - 12
+        diff < -6 -> diff + 12
+        true -> diff
+      end
+
+    case diff do
+      0 -> natural_note_name
+      1 -> natural_note_name <> "#"
+      -1 -> natural_note_name <> "b"
+      2 -> natural_note_name <> "##"
+      -2 -> natural_note_name <> "bb"
+      _ -> natural_note_name
+    end
   end
 
   @doc false
   defp generate_note_explanations(root, intervals, scale_type, notes) do
     root_pitch = rem(root.midi, 12)
-    use_flats = should_use_flats(root.midi)
-    natural_order = ~w(C D E F G A B)
-    root_index = get_natural_note_index(root_pitch)
-    
+    _use_flats = should_use_flats(root.midi)
+    _natural_order = ~w(C D E F G A B)
+    _root_index = get_natural_note_index(root_pitch)
+
     intervals
     |> Enum.with_index()
     |> Enum.map(fn {interval, degree} ->
       midi = root.midi + interval
       note = Enum.at(notes, degree)
-      
+
       # Get the degree name (1st, 2nd, 3rd, etc)
       degree_name = get_degree_name(degree)
-      
+
       # Get scale degree in terms of intervals
       interval_semitones = interval
       interval_explanation = get_interval_explanation(interval_semitones)
-      
+
       # Check if this note has an accidental
       has_accidental = String.contains?(note.name, "#") or String.contains?(note.name, "b")
-      
-      accidental_reason = if has_accidental do
-        get_accidental_reason(scale_type, degree)
-      else
-        ""
-      end
-      
+
+      accidental_reason =
+        if has_accidental do
+          get_accidental_reason(scale_type, degree)
+        else
+          ""
+        end
+
       %{
         midi: midi,
         name: note.name,
@@ -288,58 +368,59 @@ defmodule MusicIan.MusicCore.Scale do
     end
   end
 
-  @doc false
-  defp get_interval_explanation(semitones) do
-    case semitones do
-      0 -> "Unísono (0 semitonos)"
-      2 -> "Tono (2 semitonos) - Intervalo mayor"
-      3 -> "Tono y medio (3 semitonos) - Intervalo menor"
-      4 -> "Dos tonos (4 semitonos) - Tercera mayor"
-      5 -> "Dos tonos y medio (5 semitonos) - Cuarta perfecta"
-      6 -> "Tres tonos (6 semitonos) - Tritono"
-      7 -> "Tres tonos y medio (7 semitonos) - Quinta perfecta"
-      9 -> "Cuatro tonos y medio (9 semitonos) - Sexta mayor"
-      10 -> "Cinco tonos (10 semitonos) - Sexta menor"
-      11 -> "Cinco tonos y medio (11 semitonos) - Séptima mayor"
-      _ -> "#{semitones} semitonos"
-    end
-  end
+  defp get_interval_explanation(0), do: "Unísono (0 semitonos)"
+  defp get_interval_explanation(2), do: "Tono (2 semitonos) - Intervalo mayor"
+  defp get_interval_explanation(3), do: "Tono y medio (3 semitonos) - Intervalo menor"
+  defp get_interval_explanation(4), do: "Dos tonos (4 semitonos) - Tercera mayor"
+  defp get_interval_explanation(5), do: "Dos tonos y medio (5 semitonos) - Cuarta perfecta"
+  defp get_interval_explanation(6), do: "Tres tonos (6 semitonos) - Tritono"
+  defp get_interval_explanation(7), do: "Tres tonos y medio (7 semitonos) - Quinta perfecta"
+  defp get_interval_explanation(9), do: "Cuatro tonos y medio (9 semitonos) - Sexta mayor"
+  defp get_interval_explanation(10), do: "Cinco tonos (10 semitonos) - Sexta menor"
+  defp get_interval_explanation(11), do: "Cinco tonos y medio (11 semitonos) - Séptima mayor"
+  defp get_interval_explanation(n), do: "#{n} semitonos"
 
-  @doc false
-  defp get_accidental_reason(scale_type, degree) do
-    case {scale_type, degree} do
-      {:major, 3} -> "4ª: Elevada para crear intervalo de Tritono en Lidio"
-      {:major, _} -> "Alterada según la tonalidad"
-      
-      {:natural_minor, 2} -> "3ª menor: Característica de la escala menor"
-      {:natural_minor, 5} -> "6ª menor: Característica de la escala menor"
-      {:natural_minor, 6} -> "7ª menor: Característica de la escala menor"
-      
-      {:harmonic_minor, 6} -> "7ª mayor: Elevada para crear el acorde dominante en menor"
-      
-      {:melodic_minor, 5} -> "6ª mayor: Elevada al subir para suavizar la conducción de voces"
-      {:melodic_minor, 6} -> "7ª mayor: Elevada al subir para suavizar la conducción de voces"
-      
-      {:dorian, 5} -> "6ª mayor: Define el modo Dorio (menor con 6ª alta)"
-      
-      {:phrygian, 1} -> "2ª menor: Define el modo Frigio (sonido oscuro español)"
-      
-      {:lydian, 3} -> "4ª aumentada: Característica del modo Lidio"
-      
-      {:mixolydian, 6} -> "7ª menor: Define el modo Mixolidio (mayor con 7ª baja)"
-      
-      {:locrian, 1} -> "2ª menor: Característica del modo Locrio"
-      {:locrian, 4} -> "5ª disminuida: Define el modo Locrio (muy inestable)"
-      
-      {:pentatonic_major, _} -> "Escala pentatónica: Omite semitonos para evitar disonancias"
-      {:pentatonic_minor, _} -> "Escala pentatónica: La base del Blues y Rock"
-      
-      {:blues, 3} -> "b5 (Blue Note): La 'nota de paso' del Blues"
-      {:blues, _} -> "Nota de la escala pentatónica"
-      
-      _ -> "Alterada según la tonalidad"
-    end
-  end
+  defp get_accidental_reason(:major, 3),
+    do: "4ª: Elevada para crear intervalo de Tritono en Lidio"
+
+  defp get_accidental_reason(:major, _), do: "Alterada según la tonalidad"
+  defp get_accidental_reason(:natural_minor, 2), do: "3ª menor: Característica de la escala menor"
+  defp get_accidental_reason(:natural_minor, 5), do: "6ª menor: Característica de la escala menor"
+  defp get_accidental_reason(:natural_minor, 6), do: "7ª menor: Característica de la escala menor"
+
+  defp get_accidental_reason(:harmonic_minor, 6),
+    do: "7ª mayor: Elevada para crear el acorde dominante en menor"
+
+  defp get_accidental_reason(:melodic_minor, 5),
+    do: "6ª mayor: Elevada al subir para suavizar la conducción de voces"
+
+  defp get_accidental_reason(:melodic_minor, 6),
+    do: "7ª mayor: Elevada al subir para suavizar la conducción de voces"
+
+  defp get_accidental_reason(:dorian, 5), do: "6ª mayor: Define el modo Dorio (menor con 6ª alta)"
+
+  defp get_accidental_reason(:phrygian, 1),
+    do: "2ª menor: Define el modo Frigio (sonido oscuro español)"
+
+  defp get_accidental_reason(:lydian, 3), do: "4ª aumentada: Característica del modo Lidio"
+
+  defp get_accidental_reason(:mixolydian, 6),
+    do: "7ª menor: Define el modo Mixolidio (mayor con 7ª baja)"
+
+  defp get_accidental_reason(:locrian, 1), do: "2ª menor: Característica del modo Locrio"
+
+  defp get_accidental_reason(:locrian, 4),
+    do: "5ª disminuida: Define el modo Locrio (muy inestable)"
+
+  defp get_accidental_reason(:pentatonic_major, _),
+    do: "Escala pentatónica: Omite semitonos para evitar disonancias"
+
+  defp get_accidental_reason(:pentatonic_minor, _),
+    do: "Escala pentatónica: La base del Blues y Rock"
+
+  defp get_accidental_reason(:blues, 3), do: "b5 (Blue Note): La 'nota de paso' del Blues"
+  defp get_accidental_reason(:blues, _), do: "Nota de la escala pentatónica"
+  defp get_accidental_reason(_, _), do: "Alterada según la tonalidad"
 
   @doc """
   Returns the list of supported scale types.
@@ -353,16 +434,16 @@ defmodule MusicIan.MusicCore.Scale do
   @spec diatonic_triads(t()) :: [Chord.t()]
   def diatonic_triads(%__MODULE__{notes: notes} = _scale) do
     extended_notes = extend_notes(notes)
-    
+
     0..(length(notes) - 1)
     |> Enum.map(fn i ->
       root = Enum.at(extended_notes, i)
       third = Enum.at(extended_notes, i + 2)
       fifth = Enum.at(extended_notes, i + 4)
-      
+
       chord_notes = [root, third, fifth]
       quality = identify_triad_quality(chord_notes)
-      
+
       %Chord{
         root: root,
         quality: quality,
@@ -379,17 +460,17 @@ defmodule MusicIan.MusicCore.Scale do
   @spec diatonic_sevenths(t()) :: [Chord.t()]
   def diatonic_sevenths(%__MODULE__{notes: notes} = _scale) do
     extended_notes = extend_notes(notes)
-    
+
     0..(length(notes) - 1)
     |> Enum.map(fn i ->
       root = Enum.at(extended_notes, i)
       third = Enum.at(extended_notes, i + 2)
       fifth = Enum.at(extended_notes, i + 4)
       seventh = Enum.at(extended_notes, i + 6)
-      
+
       chord_notes = [root, third, fifth, seventh]
       quality = identify_seventh_quality(chord_notes)
-      
+
       %Chord{
         root: root,
         quality: quality,
@@ -405,21 +486,21 @@ defmodule MusicIan.MusicCore.Scale do
     # When extending, we should respect the original note's flat/sharp preference
     # But Note.new creates a new note from MIDI, so we might lose the preference if not careful.
     # However, for extension we just need MIDI values usually, but here we return Note structs.
-    # A simple way is to just add 12 to midi and recreate. 
+    # A simple way is to just add 12 to midi and recreate.
     # Ideally we should copy the name logic or pass options.
-    # For now, let's assume standard sharp naming for extensions unless we pass opts, 
+    # For now, let's assume standard sharp naming for extensions unless we pass opts,
     # but diatonic_triads doesn't take opts.
-    # Let's just use Note.new(midi) which defaults to sharp. 
+    # Let's just use Note.new(midi) which defaults to sharp.
     # This might cause inconsistency in naming (e.g. Ab scale having G# in upper octave).
-    # TODO: Fix this properly by storing preference in Scale struct or Note struct.
-    
+    # Mejora futura: almacenar la preferencia (sharps/flats) en el struct Scale para pasarla aquí.
+
     notes ++ Enum.map(notes, fn n -> Note.new(n.midi + 12) end)
   end
 
   defp identify_triad_quality([root, third, fifth]) do
     i1 = third.midi - root.midi
     i2 = fifth.midi - root.midi
-    
+
     case {i1, i2} do
       {4, 7} -> :major
       {3, 7} -> :minor
@@ -433,14 +514,15 @@ defmodule MusicIan.MusicCore.Scale do
     i1 = third.midi - root.midi
     i2 = fifth.midi - root.midi
     i3 = seventh.midi - root.midi
-    
+
     case {i1, i2, i3} do
       {4, 7, 11} -> :major7
       {4, 7, 10} -> :dominant7
       {3, 7, 10} -> :minor7
       {3, 6, 10} -> :minor7b5
       {3, 6, 9} -> :diminished7
-      {3, 7, 11} -> :minor_major7 # Rare but possible in melodic minor
+      # Rare but possible in melodic minor
+      {3, 7, 11} -> :minor_major7
       _ -> :unknown
     end
   end

@@ -18,7 +18,7 @@ Repo.delete_all(Module)
 IO.puts("✅ Database cleared!\n")
 
 # Load modules and lesson-to-module mapping
-IO.puts "📚 Loading modules..."
+IO.puts("📚 Loading modules...")
 _lesson_to_module_mapping = Code.eval_file("priv/repo/seed_modules_data.exs") |> elem(0)
 IO.puts("✅ Modules loaded!\n")
 

@@ -90,11 +90,15 @@ const MusicStaff = {
   },
   
   highlightNote(midi) {
+    // Cancelar el timer anterior para evitar que notas viejas queden iluminadas
+    if (this.highlightTimeout) clearTimeout(this.highlightTimeout);
+
+    // Solo iluminar la nota actual
+    this.highlightedMidis.clear();
     this.highlightedMidis.add(midi);
     this.draw();
-    
-    // Remove highlight after 500ms
-    setTimeout(() => {
+
+    this.highlightTimeout = setTimeout(() => {
       this.highlightedMidis.delete(midi);
       this.draw();
     }, 500);
@@ -108,41 +112,45 @@ const MusicStaff = {
     
     // Get parent dimensions or use clientWidth
     const width = this.div.clientWidth;
-    const height = this.div.clientHeight || 280; 
-    
+    // Grand staff: treble Y=30 (100px tall) + bass Y=140 (100px tall) + margin = 270px minimum
+    const GRAND_STAFF_HEIGHT = 270;
+    const containerHeight = this.div.clientHeight || 0;
+    const height = Math.max(containerHeight, GRAND_STAFF_HEIGHT);
+
     if (width === 0) return;
 
     const renderer = new Renderer(this.div, Renderer.Backends.SVG);
     renderer.resize(width, height);
     const context = renderer.getContext();
-    
-    // Scale context if needed to fit everything
-    // Standard VexFlow height is usually around 100-120 per stave.
-    // Grand staff needs ~200-250.
-    // If container is smaller, we scale down.
-    const requiredHeight = 260; // 30 (top) + 100 (treble) + 100 (bass) + 30 (bottom)
-    if (height < requiredHeight) {
-        const scale = height / requiredHeight;
-        context.scale(scale, scale);
+
+    // Allow SVG to overflow if container is smaller than needed
+    const svg = this.div.querySelector("svg");
+    if (svg) {
+      svg.style.overflow = "visible";
+      svg.style.minHeight = GRAND_STAFF_HEIGHT + "px";
     }
 
     const notesData = JSON.parse(this.el.dataset.notes || "[]");
     const keySignature = this.el.dataset.key || "C";
     const currentStepIndex = parseInt(this.el.dataset.stepIndex || "0");
     const isLesson = this.el.dataset.isLesson === "true";
+    const timeSignature = this.el.dataset.timeSignature || "4/4";
+    const [timeSigNum, timeSigDen] = timeSignature.split("/").map(Number);
+    // beatsPerBar expresado en negras (quarter notes), que es la unidad interna de duración
+    const beatsPerBar = timeSigNum * (4 / timeSigDen);
 
     // 1. Create Staves (Grand Staff)
     // Treble
     const staveTreble = new Stave(10, 30, width - 20);
     staveTreble.addClef("treble");
-    staveTreble.addTimeSignature("4/4");
+    staveTreble.addTimeSignature(timeSignature);
     if (keySignature) staveTreble.addKeySignature(keySignature);
     staveTreble.setContext(context).draw();
 
-    // Bass
-    const staveBass = new Stave(10, 130, width - 20);
+    // Bass (offset 10px lower than treble bottom for breathing room)
+    const staveBass = new Stave(10, 140, width - 20);
     staveBass.addClef("bass");
-    staveBass.addTimeSignature("4/4");
+    staveBass.addTimeSignature(timeSignature);
     if (keySignature) staveBass.addKeySignature(keySignature);
     staveBass.setContext(context).draw();
 
@@ -156,20 +164,42 @@ const MusicStaff = {
     // 2. Create Notes and Rests for both voices to ensure alignment
     const trebleTickables = [];
     const bassTickables = [];
-    
-    // Track beats to insert bar lines
+
+    // Track beats to insert bar lines (beatsPerBar ya calculado arriba desde timeSignature)
     let currentBeat = 0;
-    const beatsPerBar = 4; // Assuming 4/4 for now
+
+    // Helper: duración en beats
+    const durationBeats = { "w": 4, "h": 2, "q": 1, "8": 0.5 };
+
+    // Helper: rellena beats restantes con silencios invisibles para completar el compás
+    const fillWithRests = (beats) => {
+        const map = [[4, "w"], [2, "h"], [1, "q"], [0.5, "8"]];
+        let remaining = beats;
+        for (const [b, d] of map) {
+            while (remaining >= b) {
+                const tr = new StaveNote({ keys: ["b/4"], duration: d, type: "r" });
+                tr.setStyle({ fillStyle: "transparent", strokeStyle: "transparent" });
+                trebleTickables.push(tr);
+                const br = new StaveNote({ keys: ["d/3"], duration: d, type: "r" });
+                br.setStyle({ fillStyle: "transparent", strokeStyle: "transparent" });
+                bassTickables.push(br);
+                remaining -= b;
+            }
+        }
+    };
 
     notesData.forEach((step, index) => {
         const duration = step.duration || "q";
-        
-        // Calculate beat value of this note
-        let noteBeats = 1;
-        if (duration === "w") noteBeats = 4;
-        if (duration === "h") noteBeats = 2;
-        if (duration === "q") noteBeats = 1;
-        if (duration === "8") noteBeats = 0.5;
+        const noteBeats = durationBeats[duration] || 1;
+
+        // Si la nota no cabe en el compás actual, rellenar y cerrar compás antes de añadirla
+        const beatsRemaining = beatsPerBar - currentBeat;
+        if (noteBeats > beatsRemaining && currentBeat > 0) {
+            fillWithRests(beatsRemaining);
+            trebleTickables.push(new BarNote());
+            bassTickables.push(new BarNote());
+            currentBeat = 0;
+        }
 
         // Separate notes by clef
         const trebleNotes = step.notes.filter(n => n.clef === "treble");
@@ -231,16 +261,20 @@ const MusicStaff = {
             bassTickables.push(rest);
         }
         
-        // Update beat counter and add bar line if needed
+        // Actualizar contador y cerrar compás si está completo
         currentBeat += noteBeats;
-        
+
         if (currentBeat >= beatsPerBar) {
-            // Add Bar Line
             trebleTickables.push(new BarNote());
             bassTickables.push(new BarNote());
-            currentBeat = 0; // Reset for next measure
+            currentBeat = 0;
         }
     });
+
+    // Rellenar el último compás incompleto con silencios invisibles
+    if (currentBeat > 0 && currentBeat < beatsPerBar) {
+        fillWithRests(beatsPerBar - currentBeat);
+    }
 
     // 3. Create Voices
     // Calculate total beats for the voice based on tickables
@@ -305,7 +339,7 @@ const MusicStaff = {
             const noteX = targetNote.getAbsoluteX();
             context.beginPath();
             context.moveTo(noteX, 30);
-            context.lineTo(noteX, 230);
+            context.lineTo(noteX, 250);
             context.lineWidth = 2;
             context.strokeStyle = "#ef4444"; // Red-500
             context.stroke();

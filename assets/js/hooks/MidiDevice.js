@@ -1,30 +1,41 @@
 const MidiDevice = {
   mounted() {
     // === TIMING SYSTEM INITIALIZATION ===
-    this.metronomeStartTime = null;  // When metronome started (performance.now())
-    this.metronomeStartServerTime = null; // Server timestamp when metronome started
+    this.metronomeStartTime = null;   // When metronome started (performance.now())
+    this.practiceStartTime = null;    // When practice phase actually started (reset en lesson_started)
     this.currentBPM = 60;             // Beats per minute
     this.beatDurationMs = 1000;       // Milliseconds per beat (1000 / BPM)
     this.timingTolerance = 150;       // ±150ms tolerance for "on time"
     this.timingLog = [];              // Log of all timing events for analysis
-    
-    // === NEW: Lesson steps for beat-based validation ===
+
+    // === Lesson steps for beat-based validation ===
     this.lessonSteps = null;          // Steps from current lesson
     this.currentStepIndex = 0;        // Which step we're expecting
     
     this.initMIDI();
     
-    // === NEW: Receive lesson info when practice starts ===
-    this.handleEvent("lesson_started", ({ steps, tempo, metronome_active }) => {
-      console.log(`📚 Lesson started with ${steps.length} steps at ${tempo} BPM`);
+    // === Receive lesson info when practice starts ===
+    this.handleEvent("lesson_started", ({ steps, tempo, metronome_active, timing_strictness, beat_map }) => {
+      // Capturar el tiempo EXACTO en que empieza la práctica (no la cuenta atrás)
+      // El metrónomo empezó antes (cuenta atrás ~9s), así que NO se usa metronomeStartTime
+      // como referencia o todos los beats estarán desplazados 9000ms+.
+      this.practiceStartTime = performance.now();
+
       this.lessonSteps = steps;
       this.currentStepIndex = 0;
-      
-      // Pre-calculate expected beats for each step
+      this.timingStrictness = timing_strictness || 0;
+      this.serverBeatMap = beat_map || null;
+
+      // Pre-calcular beats esperados para cada step (desde práctica start = beat 0)
       this.expectedBeatsPerStep = this.calculateExpectedBeatsForLesson(steps);
-      console.log(`📍 Expected beats per step:`, this.expectedBeatsPerStep);
     });
-    
+
+    // === Server confirms step was accepted — advance step index for timing ===
+    this.handleEvent("step_advanced", ({ step_index }) => {
+      this.currentStepIndex = step_index;
+      console.log(`✅ Step advanced to ${step_index}`);
+    });
+
     // Listen for play_note event from server (Virtual Keyboard clicks)
     this.handleEvent("play_note", ({ midi, duration }) => {
       this.sendMidiOut(midi, duration || 0.5);
@@ -622,11 +633,14 @@ const MidiDevice = {
    * }
    */
   checkTimingSynchronization(notePlayedAtMs, expectedBeatIndex = null) {
-    if (!this.metronomeStartTime) {
+    // Usar practiceStartTime si está disponible (más preciso: excluye cuenta atrás).
+    // Si no hay práctica activa, usar metronomeStartTime como fallback.
+    const referenceTime = this.practiceStartTime || this.metronomeStartTime;
+    if (!referenceTime) {
       return { status: 'unknown', deviation: 0, severity: 'unknown' };
     }
 
-    const noteRelativeTime = notePlayedAtMs - this.metronomeStartTime;
+    const noteRelativeTime = notePlayedAtMs - referenceTime;
     const currentBeatPosition = noteRelativeTime / this.beatDurationMs;
 
     // === NEW: Use provided expected beat or round to nearest beat ===

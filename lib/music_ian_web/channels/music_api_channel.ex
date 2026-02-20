@@ -27,12 +27,11 @@ defmodule MusicIanWeb.MusicApiChannel do
   # MUSICCORE: NOTE OPERATIONS
   # ─────────────────────────────────────────────────────────────
 
-  @doc """
-  Crea una nota a partir de MIDI.
-
-  Params: {notes: int}
-  Response: {name: str, octave: int, frequency: float, midi: int}
-  """
+  # Crea una nota a partir de MIDI.
+  #
+  # Params: {notes: int}
+  # Response: {name: str, octave: int, frequency: float, midi: int}
+  @doc false
   def handle_in("mcp.note_new", %{"midi" => midi}, socket) do
     result = MusicIan.MusicCore.Note.new(midi)
 
@@ -53,12 +52,10 @@ defmodule MusicIanWeb.MusicApiChannel do
       error_response("mcp.note_new", e, socket)
   end
 
-  @doc """
-  Obtiene la frecuencia de una nota MIDI.
-
-  Params: {midi: int}
-  Response: {frequency: float}
-  """
+  # Obtiene la frecuencia de una nota MIDI.
+  #
+  # Params: {midi: int}
+  # Response: {frequency: float}
   def handle_in("mcp.note_frequency", %{"midi" => midi}, socket) do
     frequency = MusicIan.MusicCore.Note.frequency(midi)
 
@@ -78,12 +75,10 @@ defmodule MusicIanWeb.MusicApiChannel do
   # MUSICCORE: SCALE OPERATIONS
   # ─────────────────────────────────────────────────────────────
 
-  @doc """
-  Obtiene las notas de una escala.
-
-  Params: {root: int, scale_type: string}
-  Response: {notes: List, names: List, description: str, mood: str}
-  """
+  # Obtiene las notas de una escala.
+  #
+  # Params: {root: int, scale_type: string}
+  # Response: {notes: List, names: List, description: str, mood: str}
   def handle_in("mcp.scale_notes", %{"root" => root, "scale_type" => scale_type}, socket) do
     scale_atom = String.to_atom(scale_type)
     scale = MusicIan.MusicCore.Scale.new(root, scale_atom)
@@ -106,12 +101,10 @@ defmodule MusicIanWeb.MusicApiChannel do
       error_response("mcp.scale_notes", e, socket)
   end
 
-  @doc """
-  Obtiene todos los modos de una escala.
-
-  Params: {root: int}
-  Response: {ionian: List, dorian: List, ...}
-  """
+  # Obtiene todos los modos de una escala.
+  #
+  # Params: {root: int}
+  # Response: {ionian: List, dorian: List, ...}
   def handle_in("mcp.scale_modes", %{"root" => root}, socket) do
     # Generate all modes for the given root
     mode_types = [:ionian, :dorian, :phrygian, :lydian, :mixolydian, :aeolian, :locrian]
@@ -135,12 +128,10 @@ defmodule MusicIanWeb.MusicApiChannel do
       error_response("mcp.scale_modes", e, socket)
   end
 
-  @doc """
-  Verifica si notas pertenecen a una escala.
-
-  Params: {scale_notes: List, test_notes: List}
-  Response: {contained: bool, missing: List, extra: List}
-  """
+  # Verifica si notas pertenecen a una escala.
+  #
+  # Params: {scale_notes: List, test_notes: List}
+  # Response: {contained: bool, missing: List, extra: List}
   def handle_in(
         "mcp.scale_contains_notes",
         %{"scale_notes" => scale_notes, "test_notes" => test_notes},
@@ -175,12 +166,10 @@ defmodule MusicIanWeb.MusicApiChannel do
   # MUSICCORE: CHORD OPERATIONS
   # ─────────────────────────────────────────────────────────────
 
-  @doc """
-  Crea un acorde a partir de root y quality.
-
-  Params: {root: int, quality: string}
-  Response: {root: str, quality: str, notes: List, inversion: int}
-  """
+  # Crea un acorde a partir de root y quality.
+  #
+  # Params: {root: int, quality: string}
+  # Response: {root: str, quality: str, notes: List, inversion: int}
   def handle_in("mcp.chord_new", %{"root" => root, "quality" => quality}, socket) do
     quality_atom = String.to_atom(quality)
     chord = MusicIan.MusicCore.Chord.new(root, quality_atom)
@@ -203,12 +192,10 @@ defmodule MusicIanWeb.MusicApiChannel do
       error_response("mcp.chord_new", e, socket)
   end
 
-  @doc """
-  Detecta qué acorde forman un conjunto de notas MIDI.
-
-  Params: {notes: List}
-  Response: {root: str, quality: str, notes: List, inversion: int, reasoning: str}
-  """
+  # Detecta qué acorde forman un conjunto de notas MIDI.
+  #
+  # Params: {notes: List}
+  # Response: {root: str, quality: str, notes: List, inversion: int, reasoning: str}
   def handle_in("mcp.chord_from_midi_notes", %{"notes" => notes}, socket) do
     chord = MusicIan.MusicCore.Chord.from_midi_notes(notes)
 
@@ -244,12 +231,10 @@ defmodule MusicIanWeb.MusicApiChannel do
       error_response("mcp.chord_from_midi_notes", e, socket)
   end
 
-  @doc """
-  Invierte un acorde.
-
-  Params: {root: int, quality: string, inversion: int}
-  Response: {root: str, quality: str, notes: List, inversion: int, name: str}
-  """
+  # Invierte un acorde.
+  #
+  # Params: {root: int, quality: string, inversion: int}
+  # Response: {root: str, quality: str, notes: List, inversion: int, name: str}
   def handle_in(
         "mcp.chord_invert",
         %{"root" => root, "quality" => quality, "inversion" => inversion},
@@ -286,12 +271,10 @@ defmodule MusicIanWeb.MusicApiChannel do
   # MUSICCORE: THEORY OPERATIONS
   # ─────────────────────────────────────────────────────────────
 
-  @doc """
-  Determina la tonalidad (key signature) de un conjunto de notas.
-
-  Params: {notes: List}
-  Response: {key: str, accidentals: int, suggested_tonality: str, confidence: float}
-  """
+  # Determina la tonalidad (key signature) de un conjunto de notas.
+  #
+  # Params: {notes: List}
+  # Response: {key: str, accidentals: int, suggested_tonality: str, confidence: float}
   def handle_in("mcp.theory_key_signature", %{"notes" => notes}, socket) do
     result = MusicIan.MusicCore.Theory.determine_key_signature(notes, :major, :natural)
 
@@ -312,12 +295,10 @@ defmodule MusicIanWeb.MusicApiChannel do
       error_response("mcp.theory_key_signature", e, socket)
   end
 
-  @doc """
-  Calcula el intervalo entre dos notas.
-
-  Params: {note1: int, note2: int}
-  Response: {semitones: int, name: str, quality: str}
-  """
+  # Calcula el intervalo entre dos notas.
+  #
+  # Params: {note1: int, note2: int}
+  # Response: {semitones: int, name: str, quality: str}
   def handle_in("mcp.theory_intervals", %{"note1" => note1, "note2" => note2}, socket) do
     semitones = abs(note2 - note1)
     normalized = rem(semitones, 12)
@@ -361,15 +342,13 @@ defmodule MusicIanWeb.MusicApiChannel do
   # PRACTICE: LESSON OPERATIONS
   # ─────────────────────────────────────────────────────────────
 
-  @doc """
-  Inicia una sesión de lección.
-
-  Params: {lesson_id: string, user_id: int}
-  Response: {session_id: str, lesson_id: str, phase: str, current_step: int}
-  """
+  # Inicia una sesión de lección.
+  #
+  # Params: {lesson_id: string, user_id: int}
+  # Response: {session_id: str, lesson_id: str, phase: str, current_step: int}
   def handle_in("mcp.lesson_start", %{"lesson_id" => lesson_id, "user_id" => user_id}, socket) do
-    # Iniciar con LessonEngine
-    lesson_state = MusicIan.Practice.LessonEngine.new(lesson_id)
+    # Iniciar con LessonFSM
+    _lesson_state = MusicIan.Practice.FSM.LessonFSM.new(lesson_id)
     session_id = "session_#{user_id}_#{lesson_id}_#{System.unique_integer()}"
 
     response = %{
@@ -391,13 +370,11 @@ defmodule MusicIanWeb.MusicApiChannel do
       error_response("mcp.lesson_start", e, socket)
   end
 
-  @doc """
-  Valida un paso de lección.
-
-  Params: {session_id: string, played_notes: List}
-  Response: {valid: bool, feedback: str, accuracy: float, next_action: str}
-  """
-  def handle_in("mcp.lesson_validate_step", %{"played_notes" => played_notes}, socket) do
+  # Valida un paso de lección.
+  #
+  # Params: {session_id: string, played_notes: List}
+  # Response: {valid: bool, feedback: str, accuracy: float, next_action: str}
+  def handle_in("mcp.lesson_validate_step", %{"played_notes" => _played_notes}, socket) do
     # Para MVP, simplemente validamos si las notas contienen los elementos esperados
     accuracy = 1.0
 
@@ -422,12 +399,10 @@ defmodule MusicIanWeb.MusicApiChannel do
   # VALIDATION API (TESTING FUNCTIONS)
   # ─────────────────────────────────────────────────────────────
 
-  @doc """
-  Valida la detección de un acorde.
-
-  Params: {notes: List, expected: string}
-  Response: {success: bool, detected: str, expected: str, match: bool, reasoning: str}
-  """
+  # Valida la detección de un acorde.
+  #
+  # Params: {notes: List, expected: string}
+  # Response: {success: bool, detected: str, expected: str, match: bool, reasoning: str}
   def handle_in(
         "mcp.validate_chord_detection",
         %{"notes" => notes, "expected" => expected},
@@ -454,12 +429,10 @@ defmodule MusicIanWeb.MusicApiChannel do
       error_response("mcp.validate_chord_detection", e, socket)
   end
 
-  @doc """
-  Valida si notas pertenecen a una escala.
-
-  Params: {notes: List, scale_type: string, root: int}
-  Response: {valid: bool, in_scale: List, out_of_scale: List, coverage: float}
-  """
+  # Valida si notas pertenecen a una escala.
+  #
+  # Params: {notes: List, scale_type: string, root: int}
+  # Response: {valid: bool, in_scale: List, out_of_scale: List, coverage: float}
   def handle_in(
         "mcp.validate_scale_membership",
         %{"notes" => notes, "scale_type" => scale_type, "root" => root},

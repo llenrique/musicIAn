@@ -10,7 +10,7 @@ defmodule MusicIan.Repo.Migrations.CreateLessons do
       add :steps, :jsonb, null: false, default: "[]"
       add :metronome, :boolean, null: false, default: true
       add :order, :integer
-      
+
       timestamps(type: :utc_datetime_usec)
     end
 
