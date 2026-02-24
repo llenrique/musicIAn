@@ -3,6 +3,7 @@ defmodule MusicIanWeb.TheoryLive do
   alias MusicIan.Curriculum
   alias MusicIan.MCPClientHelper
   alias MusicIan.MusicCore
+  alias MusicIan.MusicCore.Chord
   alias MusicIan.MusicCore.Note
   alias MusicIan.MusicCore.Theory
   alias MusicIan.Practice.FSM.LessonFSM
@@ -14,11 +15,18 @@ defmodule MusicIanWeb.TheoryLive do
     Footer,
     Keyboard,
     LessonModals,
+    MidiAnalysisPanel,
+    SolfegeBar,
     Staff,
     TheoryPanel
   }
 
   alias MusicIanWeb.Components.PracticeComparison
+
+  # Handle URL changes (needed for push_patch)
+  def handle_params(_params, _uri, socket) do
+    {:noreply, socket}
+  end
 
   def mount(params, _session, socket) do
     # Default state: C Major Scale
@@ -49,6 +57,7 @@ defmodule MusicIanWeb.TheoryLive do
       # MCP Analysis
       |> assign(:detected_chord, nil)
       |> assign(:scale_info_enriched, nil)
+      |> assign(:midi_analysis, nil)
       # Lesson State
       |> assign(:lesson_active, false)
       # Holds the LessonFSM struct
@@ -97,6 +106,7 @@ defmodule MusicIanWeb.TheoryLive do
     |> assign(:lesson_stats, %{correct: 0, errors: 0})
     # === FIX: Clear held_notes when lesson ends ===
     |> assign(:held_notes, MapSet.new())
+    |> assign(:midi_analysis, nil)
     |> assign(:metronome_active, false)
     |> push_event("toggle_metronome", %{active: false, bpm: socket.assigns.tempo})
     |> update_active_notes()
@@ -112,6 +122,7 @@ defmodule MusicIanWeb.TheoryLive do
     |> assign(:lesson_feedback, fsm.feedback)
     |> assign(:lesson_stats, fsm.stats)
     |> assign(:held_notes, MapSet.new())
+    |> assign(:midi_analysis, nil)
     |> assign(:metronome_active, fsm.metronome_active)
     |> assign(:tempo, fsm.bpm || socket.assigns.tempo)
     |> update_active_notes()
@@ -278,7 +289,7 @@ defmodule MusicIanWeb.TheoryLive do
            |> assign(:lesson_state, new_fsm_state)
            |> assign(:current_step_index, 0)
            |> assign(:lesson_phase, :countdown)
-           |> assign(:countdown, 10)
+           |> assign(:countdown, 5)
            |> assign(:countdown_stage, :counting)
            |> assign(:metronome_active, false)
            |> update_active_notes()}
@@ -292,7 +303,17 @@ defmodule MusicIanWeb.TheoryLive do
   end
 
   def handle_event("stop_lesson", _, socket) do
-    {:noreply, assign_lesson_state(socket, nil)}
+    # 1. Primero detener metrónomo y demo explícitamente
+    socket =
+      socket
+      |> push_event("toggle_metronome", %{active: false, bpm: socket.assigns.tempo})
+      |> push_event("stop_demo_sequence", %{})
+
+    # 2. Limpiar estado de lección
+    socket = assign_lesson_state(socket, nil)
+
+    # 3. Navegar a URL limpia (sin parámetro start_lesson)
+    {:noreply, push_patch(socket, to: ~p"/")}
   end
 
   def handle_event("toggle_help", _, socket) do
@@ -440,9 +461,14 @@ defmodule MusicIanWeb.TheoryLive do
   end
 
   def handle_event("midi_note_off", %{"midi" => midi}, socket) do
-    # Remove from held notes
     held_notes = MapSet.delete(socket.assigns[:held_notes] || MapSet.new(), midi)
-    {:noreply, assign(socket, :held_notes, held_notes)}
+    midi_list = held_notes |> MapSet.to_list() |> Enum.sort()
+
+    {:noreply,
+     socket
+     |> assign(:held_notes, held_notes)
+     |> assign(:midi_analysis, build_midi_analysis(midi_list))
+     |> push_event("highlight_held_notes", %{midi_list: midi_list})}
   end
 
   defp build_sequence_steps(steps) do
@@ -477,18 +503,32 @@ defmodule MusicIanWeb.TheoryLive do
 
   defp update_held_notes(socket, midi) do
     held_notes = MapSet.put(socket.assigns[:held_notes] || MapSet.new(), midi)
-    socket = assign(socket, :held_notes, held_notes)
+    midi_list = held_notes |> MapSet.to_list() |> Enum.sort()
 
-    if MapSet.size(held_notes) >= 2 do
-      held_list = held_notes |> MapSet.to_list() |> Enum.sort()
+    socket
+    |> assign(:held_notes, held_notes)
+    |> assign(:midi_analysis, build_midi_analysis(midi_list))
+    |> push_event("highlight_held_notes", %{midi_list: midi_list})
+  end
 
-      case MCPClientHelper.chord_from_midi_notes(held_list) do
-        {:ok, chord_info} -> assign(socket, :detected_chord, chord_info)
-        {:error, _} -> assign(socket, :detected_chord, nil)
-      end
-    else
-      assign(socket, :detected_chord, nil)
-    end
+  defp build_midi_analysis([]), do: nil
+
+  defp build_midi_analysis(midi_list) do
+    notes =
+      Enum.map(midi_list, fn midi ->
+        note = Note.new(midi)
+        %{name: note.name, octave: note.octave, pitch_class: rem(midi, 12)}
+      end)
+
+    chord = Chord.from_midi_notes(midi_list)
+    chord_result = if chord.quality == :unknown, do: nil, else: chord
+
+    %{
+      notes: notes,
+      chord: chord_result,
+      intervals: Theory.intervals_between(midi_list),
+      compatible_scales: Theory.find_compatible_scales(midi_list)
+    }
   end
 
   defp handle_note_in_context(socket, midi, timing_info) do
@@ -625,8 +665,8 @@ defmodule MusicIanWeb.TheoryLive do
     fsm = socket.assigns.lesson_state
 
     case LessonFSM.handle_countdown_tick(fsm) do
-      {:countdown_tick_10, new_fsm} ->
-        # COUNTDOWN TICK 10: Activate metronome ALWAYS during countdown
+      {:countdown_tick_5, new_fsm} ->
+        # COUNTDOWN TICK 5: Activate metronome ALWAYS during countdown
         # (so the student hears beats while counting down).
         # After countdown ends, it will be turned off if lesson.metronome == false.
         Process.send_after(self(), :countdown_tick, 1000)
@@ -634,13 +674,13 @@ defmodule MusicIanWeb.TheoryLive do
         {:noreply,
          socket
          |> assign(:lesson_state, new_fsm)
-         |> assign(:countdown, 9)
+         |> assign(:countdown, 4)
          |> assign(:countdown_stage, :counting)
          |> assign(:metronome_active, true)
          |> push_event("toggle_metronome", %{active: true, bpm: socket.assigns.tempo})}
 
       {:countdown_tick, new_fsm} when countdown > 3 ->
-        # === STAGE 1: Normal countdown (10 → 4) ===
+        # === STAGE 1: Normal countdown (5 → 4) ===
         Process.send_after(self(), :countdown_tick, 1000)
 
         {:noreply,
@@ -895,7 +935,7 @@ defmodule MusicIanWeb.TheoryLive do
     <div
       id="theory-live"
       phx-hook="MidiDevice"
-      class="h-full bg-slate-100 text-slate-800 flex flex-col overflow-hidden"
+      class="h-screen bg-slate-100 text-slate-800 flex flex-col overflow-hidden"
     >
       <div id="audio-engine" phx-hook="AudioEngine"></div>
       
@@ -925,13 +965,13 @@ defmodule MusicIanWeb.TheoryLive do
               Lecciones
             </.link>
           <% else %>
-            <div class="flex items-center gap-3 bg-emerald-50 px-3 py-1 rounded border border-emerald-100">
-              <span class="text-xs font-bold text-emerald-700 uppercase tracking-wider">
+            <div class="flex items-center gap-3 bg-emerald-50 px-4 py-1.5 rounded-lg border border-emerald-200">
+              <span class="text-xs font-bold text-emerald-700 uppercase tracking-wider truncate max-w-xs">
                 Lección: {@current_lesson.title}
               </span>
               <button
                 phx-click="stop_lesson"
-                class="text-xs text-red-500 hover:text-red-700 font-medium underline"
+                class="text-xs text-red-500 hover:text-red-700 font-semibold hover:bg-red-50 px-2 py-0.5 rounded transition-colors shrink-0"
               >
                 Terminar
               </button>
@@ -1093,7 +1133,7 @@ defmodule MusicIanWeb.TheoryLive do
           <LessonModals.lesson_summary_modal lesson={@current_lesson} lesson_stats={@lesson_stats} />
         <% end %>
 
-        <div class="grid grid-cols-12 gap-4 h-full">
+        <div class="grid grid-cols-12 gap-4 h-full lg:grid-rows-1">
           <!-- LEFT: Configuration -->
           <div class="col-span-12 lg:col-span-2 flex flex-col gap-4 h-full overflow-hidden">
             <CircleOfFifths.circle_of_fifths
@@ -1114,12 +1154,12 @@ defmodule MusicIanWeb.TheoryLive do
               />
             </div>
           </div>
-
-          <!-- CENTER + RIGHT: flex para que el centro se expanda al colapsar el panel -->
+          
+    <!-- CENTER + RIGHT: flex para que el centro se expanda al colapsar el panel -->
           <div class="col-span-12 lg:col-span-10 flex gap-4 h-full">
             <!-- CENTER: flex-1 se expande automáticamente -->
-            <div class="flex-1 min-w-0 flex flex-col gap-4 h-full">
-              <div class="h-2/5">
+            <div class="flex-1 min-w-0 flex flex-col gap-2 h-full overflow-hidden">
+              <div class="h-2/5 shrink-0">
                 <Staff.music_staff
                   vexflow_notes={@vexflow_notes}
                   vexflow_key={@vexflow_key}
@@ -1130,7 +1170,17 @@ defmodule MusicIanWeb.TheoryLive do
                   time_signature={@lesson_time_signature}
                 />
               </div>
-              <div class="h-3/5 flex flex-col gap-4">
+              <%= unless @lesson_active do %>
+                <%= if @midi_analysis do %>
+                  <MidiAnalysisPanel.midi_analysis_panel midi_analysis={@midi_analysis} />
+                <% else %>
+                  <SolfegeBar.solfege_bar
+                    note_explanations={@note_explanations || []}
+                    scale_type={@scale_type}
+                  />
+                <% end %>
+              <% end %>
+              <div class="flex-1 min-h-0 flex flex-col justify-end">
                 <Keyboard.virtual_keyboard
                   root_note={@root_note}
                   active_notes={@keyboard_notes}
@@ -1146,14 +1196,15 @@ defmodule MusicIanWeb.TheoryLive do
                     lesson={@current_lesson}
                     current_step_index={@current_step_index}
                     lesson_feedback={@lesson_feedback}
+                    lesson_state={@lesson_state}
                   />
                 <% end %>
               </div>
             </div>
-
-            <!-- RIGHT: Análisis Teórico colapsable -->
+            
+    <!-- RIGHT: Análisis Teórico colapsable -->
             <%= if @theory_panel_open do %>
-              <div class="w-72 flex-shrink-0 h-full">
+              <div class="w-72 flex-shrink-0 h-full overflow-hidden">
                 <TheoryPanel.theory_panel
                   root_note={@root_note}
                   scale_type={@scale_type}
@@ -1170,8 +1221,19 @@ defmodule MusicIanWeb.TheoryLive do
                   class="bg-white border border-slate-200 rounded-md p-1.5 shadow-sm hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors"
                   title="Mostrar Análisis Teórico"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke-width="2"
+                    stroke="currentColor"
+                    class="w-4 h-4"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M15.75 19.5L8.25 12l7.5-7.5"
+                    />
                   </svg>
                 </button>
               </div>

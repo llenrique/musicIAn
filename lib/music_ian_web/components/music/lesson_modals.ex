@@ -31,9 +31,88 @@ defmodule MusicIanWeb.Components.Music.LessonModals do
           <div class="h-1 w-12 bg-emerald-400 rounded"></div>
         </div>
         <div class="p-8">
-          <p class="text-slate-600 text-lg leading-relaxed mb-8">
+          <p class="text-slate-600 text-lg leading-relaxed mb-4">
             {@lesson[:intro] || @lesson.description}
           </p>
+          
+    <!-- Lesson type indicators -->
+          <div class="flex flex-wrap gap-2 mb-6">
+            <%= if @lesson[:loop] do %>
+              <span class="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 text-sm font-medium rounded-full">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="2"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
+                  />
+                </svg>
+                Práctica repetitiva
+              </span>
+            <% else %>
+              <span class="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="2"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 01-.99-3.467l2.31-.66A2.25 2.25 0 009 15.553z"
+                  />
+                </svg>
+                Melodía / Secuencia
+              </span>
+            <% end %>
+            <%= if @lesson[:duration_minutes] && @lesson[:duration_minutes] > 0 do %>
+              <span class="inline-flex items-center gap-1 px-3 py-1 bg-amber-100 text-amber-700 text-sm font-medium rounded-full">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="2"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                {@lesson[:duration_minutes]} min
+              </span>
+            <% end %>
+            <%= if @lesson[:metronome] do %>
+              <span class="inline-flex items-center gap-1 px-3 py-1 bg-emerald-100 text-emerald-700 text-sm font-medium rounded-full">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="2"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                {@lesson[:bpm] || 60} BPM
+              </span>
+            <% end %>
+          </div>
 
           <div class="flex justify-end gap-3">
             <button
@@ -328,8 +407,17 @@ defmodule MusicIanWeb.Components.Music.LessonModals do
   attr :lesson, :map, required: true
   attr :current_step_index, :integer, required: true
   attr :lesson_feedback, :map, default: nil
+  attr :lesson_state, :map, default: nil
 
   def lesson_step_indicator(assigns) do
+    {progress_percent, progress_text} =
+      calculate_progress(assigns.lesson, assigns.current_step_index, assigns.lesson_state)
+
+    assigns =
+      assigns
+      |> assign(:progress_percent, progress_percent)
+      |> assign(:progress_text, progress_text)
+
     ~H"""
     <% current_step = Enum.at(@lesson.steps, @current_step_index) %>
     <div class={"w-full bg-white border shadow-sm rounded-lg p-4 flex items-center gap-4 transition-all " <>
@@ -341,7 +429,7 @@ defmodule MusicIanWeb.Components.Music.LessonModals do
     }>
       <div class="flex-grow">
         <div class="flex justify-between text-xs text-slate-400 mb-1 uppercase font-bold tracking-wider">
-          <span>Paso {@current_step_index + 1} de {length(@lesson.steps)}</span>
+          <span>{@progress_text}</span>
           <span>
             {if @lesson_feedback, do: @lesson_feedback.message, else: "En espera..."}
           </span>
@@ -361,12 +449,51 @@ defmodule MusicIanWeb.Components.Music.LessonModals do
             stroke-width="4"
             fill="none"
             stroke-dasharray="125.6"
-            stroke-dashoffset={125.6 - 125.6 * (@current_step_index / length(@lesson.steps))}
+            stroke-dashoffset={125.6 - 125.6 * @progress_percent}
             class="transition-all duration-500 ease-out"
           />
         </svg>
       </div>
     </div>
     """
+  end
+
+  defp calculate_progress(lesson, current_index, lesson_state) do
+    is_loop_lesson = lesson_state && Map.get(lesson_state, :loop_enabled, false)
+    has_duration = lesson_state && Map.get(lesson_state, :target_duration_ms, 0) > 0
+
+    # Loop lesson with duration target: show time-based progress
+    if is_loop_lesson and has_duration do
+      calculate_time_progress(lesson_state)
+    else
+      # Non-loop lesson: show step-based progress
+      calculate_step_progress(lesson, current_index)
+    end
+  end
+
+  defp calculate_time_progress(lesson_state) do
+    elapsed = Map.get(lesson_state, :elapsed_practice_ms, 0)
+    target = lesson_state.target_duration_ms
+    percent = min(1.0, elapsed / target)
+
+    remaining_ms = max(0, target - elapsed)
+    remaining_mins = div(remaining_ms, 60_000)
+    remaining_secs = div(rem(remaining_ms, 60_000), 1_000)
+
+    time_text =
+      "#{remaining_mins}:#{remaining_secs |> Integer.to_string() |> String.pad_leading(2, "0")}"
+
+    loop_text =
+      if Map.get(lesson_state, :loop_count, 0) > 0,
+        do: " (Vuelta #{lesson_state.loop_count + 1})",
+        else: ""
+
+    {percent, "Tiempo restante: #{time_text}#{loop_text}"}
+  end
+
+  defp calculate_step_progress(lesson, current_index) do
+    total = length(lesson.steps)
+    percent = if total > 0, do: current_index / total, else: 0
+    {percent, "Paso #{current_index + 1} de #{total}"}
   end
 end

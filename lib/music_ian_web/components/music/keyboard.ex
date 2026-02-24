@@ -1,9 +1,13 @@
 defmodule MusicIanWeb.Components.Music.Keyboard do
-  @moduledoc "Componente Phoenix para el teclado virtual interactivo."
+  @moduledoc """
+  Piano de 88 teclas (A0-C8) que ocupa todo el ancho del contenedor.
+  """
   use Phoenix.Component
-  alias MusicIan.MusicCore.Note
-
   alias Phoenix.LiveView.JS
+
+  @first_midi 21
+  @last_midi 108
+  @total_white_keys 52
 
   attr :root_note, :integer, required: true
   attr :active_notes, :list, required: true
@@ -12,240 +16,181 @@ defmodule MusicIanWeb.Components.Music.Keyboard do
   attr :current_lesson, :map, default: nil
   attr :current_step_index, :integer, default: 0
   attr :virtual_velocity, :integer, default: 100
-  # Base MIDI note for keyboard display (first C to show). Default C3=48.
-  # In lesson mode this gets adjusted to center the target note.
   attr :keyboard_base, :integer, default: 48
 
   def virtual_keyboard(assigns) do
-    # Calculate dynamic keyboard label
-    base = assigns.keyboard_base
-    start_octave = div(base, 12) - 1
-    end_octave = start_octave + 2
-
     active_set = MapSet.new(assigns.active_notes)
+    keys = build_keys()
+    white_width = 100.0 / @total_white_keys
+
+    current_step =
+      if assigns.lesson_active and assigns.lesson_phase in [:active, :demo] and
+           assigns.current_lesson &&
+           assigns.current_step_index < length(assigns.current_lesson.steps) do
+        Enum.at(assigns.current_lesson.steps, assigns.current_step_index)
+      else
+        nil
+      end
+
+    target_notes =
+      if current_step do
+        (Map.get(current_step, :notes) || [Map.get(current_step, :note)])
+        |> List.wrap()
+        |> List.flatten()
+        |> Enum.reject(&is_nil/1)
+      else
+        []
+      end
+
+    finger_map = build_finger_map(current_step)
 
     assigns =
       assigns
-      |> assign(:keyboard_label, "C#{start_octave} - C#{end_octave}")
       |> assign(:active_set, active_set)
+      |> assign(:keys, keys)
+      |> assign(:white_width, white_width)
+      |> assign(:target_notes, target_notes)
+      |> assign(:finger_map, finger_map)
 
     ~H"""
-    <div class="w-full bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full">
-      <div class="bg-slate-50 px-4 py-2 border-b border-slate-200 flex justify-between items-center shrink-0">
-        <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">
-          Teclado Interactivo
-        </span>
-        <div class="flex items-center gap-2">
-          <button
-            phx-click="shift_keyboard"
-            phx-value-direction="down"
-            title="Octava abajo"
-            class="w-6 h-6 flex items-center justify-center rounded bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold text-sm transition-colors disabled:opacity-30"
-          >
-            ◀
-          </button>
-          <span class="text-xs font-semibold text-slate-600 min-w-[60px] text-center">
-            {@keyboard_label}
-          </span>
-          <button
-            phx-click="shift_keyboard"
-            phx-value-direction="up"
-            title="Octava arriba"
-            class="w-6 h-6 flex items-center justify-center rounded bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold text-sm transition-colors disabled:opacity-30"
-          >
-            ▶
-          </button>
-        </div>
-      </div>
-
-      <div class="relative flex-grow select-none w-full flex justify-center items-center overflow-hidden bg-slate-100">
-        <div
-          class="relative h-40"
-          style="width: 1008px; transform: scale(0.9); transform-origin: center center;"
-        >
-          <% # Pre-calculate target notes and finger for the current lesson step
-          current_step =
-            if @lesson_active and (@lesson_phase == :active or @lesson_phase == :demo) and
-                 @current_step_index < length(@current_lesson.steps),
-               do: Enum.at(@current_lesson.steps, @current_step_index),
-               else: nil
-
-          target_notes =
-            if current_step do
-              Map.get(current_step, :notes) || [Map.get(current_step, :note)]
-            else
-              []
-            end
-            |> List.wrap()
-            |> List.flatten()
-            |> Enum.reject(&is_nil/1)
-
-          # Create a map of midi -> finger
-          finger_map =
-            if current_step do
-              notes = Map.get(current_step, :notes) || [Map.get(current_step, :note)]
-              fingers = Map.get(current_step, :fingers) || [Map.get(current_step, :finger)]
-
-              if notes && fingers do
-                fingers_list = List.wrap(fingers) |> List.flatten()
-                notes_list = List.wrap(notes) |> List.flatten()
-
-                if length(fingers_list) == 1 and length(notes_list) > 1 do
-                  val = List.first(fingers_list)
-                  Map.new(notes_list, fn n -> {n, val} end)
-                else
-                  Enum.zip(notes_list, fingers_list) |> Map.new()
-                end
-              else
-                %{}
-              end
-            else
-              %{}
-            end %>
-          <%= for octave <- 0..2 do %>
-            <%= for i <- 0..11 do %>
-              <% midi = @keyboard_base + octave * 12 + i
-              is_black = i in [1, 3, 6, 8, 10]
-
-              is_active = MapSet.member?(@active_set, midi)
-              is_root = rem(midi, 12) == rem(@root_note, 12)
-              is_target = midi in target_notes
-              target_finger = Map.get(finger_map, midi)
-
-              white_key_index =
-                case i do
-                  0 -> 0
-                  2 -> 1
-                  4 -> 2
-                  5 -> 3
-                  7 -> 4
-                  9 -> 5
-                  11 -> 6
-                  _ -> nil
-                end %>
-              
-    <!-- White Keys -->
-              <%= if !is_black do %>
-                <div
-                  id={"key-#{midi}"}
-                  phx-mousedown={
-                    JS.dispatch("local-midi-note",
-                      detail: %{
-                        midi: midi,
-                        velocity: @virtual_velocity,
-                        isOn: true,
-                        source: "virtual-keyboard"
-                      }
-                    )
-                    |> JS.push("midi_note_on", value: %{midi: midi, velocity: @virtual_velocity})
-                  }
-                  phx-mouseup={
-                    JS.dispatch("local-midi-note",
-                      detail: %{midi: midi, velocity: 0, isOn: false, source: "virtual-keyboard"}
-                    )
-                    |> JS.push("midi_note_off", value: %{midi: midi})
-                  }
-                  phx-mouseleave={
-                    JS.dispatch("local-midi-note",
-                      detail: %{midi: midi, velocity: 0, isOn: false, source: "virtual-keyboard"}
-                    )
-                    |> JS.push("midi_note_off", value: %{midi: midi})
-                  }
-                  class={"absolute top-0 w-12 h-40 border-r border-b border-slate-300 rounded-b-md transition-colors duration-75 cursor-pointer z-0 " <>
-                  cond do
-                    is_target -> "bg-blue-200 hover:bg-blue-300"
-                    is_active -> if(is_root, do: "bg-purple-100 hover:bg-purple-200", else: "bg-emerald-50 hover:bg-emerald-100")
-                    true -> "bg-white hover:bg-slate-50"
-                  end
+    <div
+      class="w-full bg-slate-100 rounded-lg border border-slate-200 overflow-hidden"
+      style="height: 140px;"
+    >
+      <div class="relative w-full h-full">
+        <%!-- White Keys --%>
+        <%= for key <- Enum.filter(@keys, & &1.type == :white) do %>
+          <% midi = key.midi
+          is_active = MapSet.member?(@active_set, midi)
+          is_root = rem(midi, 12) == rem(@root_note, 12)
+          is_target = midi in @target_notes
+          finger = Map.get(@finger_map, midi) %>
+          <div
+            id={"key-#{midi}"}
+            phx-mousedown={
+              JS.dispatch("local-midi-note",
+                detail: %{
+                  midi: midi,
+                  velocity: @virtual_velocity,
+                  isOn: true,
+                  source: "virtual-keyboard"
                 }
-                  style={"left: #{(octave * 7 + white_key_index) * 3}rem;"}
-                >
-                  <!-- Finger Indicator -->
-                  <%= if is_target and target_finger do %>
-                    <div class="absolute bottom-8 left-1/2 -translate-x-1/2 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold shadow-md animate-bounce z-20">
-                      {target_finger}
-                    </div>
-                  <% end %>
-
-                  <div class={"absolute bottom-3 left-1/2 -translate-x-1/2 text-xs font-bold " <>
-                  if(is_active, do: "text-slate-500", else: "text-slate-300")
-                }>
-                    {Note.new(midi, use_flats: rem(@root_note, 12) in [5, 10, 3, 8, 1, 6]).name}
-                  </div>
-                </div>
-              <% end %>
+              )
+              |> JS.push("midi_note_on", value: %{midi: midi, velocity: @virtual_velocity})
+            }
+            phx-mouseup={
+              JS.dispatch("local-midi-note",
+                detail: %{midi: midi, velocity: 0, isOn: false, source: "virtual-keyboard"}
+              )
+              |> JS.push("midi_note_off", value: %{midi: midi})
+            }
+            class={"absolute top-0 h-full border-r border-slate-300 rounded-b cursor-pointer transition-colors " <>
+              cond do
+                is_target -> "bg-blue-200"
+                is_active -> if(is_root, do: "bg-purple-100", else: "bg-emerald-100")
+                true -> "bg-white hover:bg-slate-50"
+              end}
+            style={"left: #{key.left}%; width: #{@white_width}%;"}
+          >
+            <%= if finger do %>
+              <div class="absolute bottom-10 left-1/2 -translate-x-1/2 w-5 h-5 bg-blue-600 text-white rounded-full flex items-center justify-center text-[10px] font-bold">
+                {finger}
+              </div>
             <% end %>
-          <% end %>
-          
-    <!-- Black Keys -->
-          <%= for octave <- 0..2 do %>
-            <%= for i <- 0..11 do %>
-              <% midi = @keyboard_base + octave * 12 + i
-              is_black = i in [1, 3, 6, 8, 10]
+            <%= if rem(midi, 12) == 0 do %>
+              <div class="absolute bottom-1 left-1/2 -translate-x-1/2 text-[8px] text-slate-400">
+                C{div(midi, 12) - 1}
+              </div>
+            <% end %>
+          </div>
+        <% end %>
 
-              is_active = MapSet.member?(@active_set, midi)
-              is_root = rem(midi, 12) == rem(@root_note, 12)
-              is_target = midi in target_notes
-              target_finger = Map.get(finger_map, midi)
-
-              black_key_left =
-                case i do
-                  1 -> 1
-                  3 -> 2
-                  6 -> 4
-                  8 -> 5
-                  10 -> 6
-                  _ -> nil
-                end %>
-
-              <%= if is_black do %>
-                <div
-                  id={"key-#{midi}"}
-                  phx-mousedown={
-                    JS.dispatch("local-midi-note",
-                      detail: %{
-                        midi: midi,
-                        velocity: @virtual_velocity,
-                        isOn: true,
-                        source: "virtual-keyboard"
-                      }
-                    )
-                    |> JS.push("midi_note_on", value: %{midi: midi, velocity: @virtual_velocity})
-                  }
-                  phx-mouseup={
-                    JS.dispatch("local-midi-note",
-                      detail: %{midi: midi, velocity: 0, isOn: false, source: "virtual-keyboard"}
-                    )
-                    |> JS.push("midi_note_off", value: %{midi: midi})
-                  }
-                  phx-mouseleave={
-                    JS.dispatch("local-midi-note",
-                      detail: %{midi: midi, velocity: 0, isOn: false, source: "virtual-keyboard"}
-                    )
-                    |> JS.push("midi_note_off", value: %{midi: midi})
-                  }
-                  class={"absolute top-0 w-8 h-24 border-x border-b border-slate-800 rounded-b-md z-10 transition-colors duration-75 cursor-pointer " <>
-                  cond do
-                    is_target -> "bg-blue-600"
-                    is_active -> if(is_root, do: "bg-purple-700 hover:bg-purple-600", else: "bg-slate-600 hover:bg-slate-500")
-                    true -> "bg-slate-800 hover:bg-slate-700"
-                  end
+        <%!-- Black Keys --%>
+        <%= for key <- Enum.filter(@keys, & &1.type == :black) do %>
+          <% midi = key.midi
+          is_active = MapSet.member?(@active_set, midi)
+          is_root = rem(midi, 12) == rem(@root_note, 12)
+          is_target = midi in @target_notes
+          finger = Map.get(@finger_map, midi) %>
+          <div
+            id={"key-#{midi}"}
+            phx-mousedown={
+              JS.dispatch("local-midi-note",
+                detail: %{
+                  midi: midi,
+                  velocity: @virtual_velocity,
+                  isOn: true,
+                  source: "virtual-keyboard"
                 }
-                  style={"left: calc(#{(octave * 7 + black_key_left) * 3}rem - 1rem);"}
-                >
-                  <!-- Finger Indicator (Black Keys) -->
-                  <%= if is_target and target_finger do %>
-                    <div class="absolute bottom-4 left-1/2 -translate-x-1/2 w-5 h-5 bg-white text-blue-600 rounded-full flex items-center justify-center text-[10px] font-bold shadow-md animate-bounce z-30">
-                      {target_finger}
-                    </div>
-                  <% end %>
-                </div>
-              <% end %>
+              )
+              |> JS.push("midi_note_on", value: %{midi: midi, velocity: @virtual_velocity})
+            }
+            phx-mouseup={
+              JS.dispatch("local-midi-note",
+                detail: %{midi: midi, velocity: 0, isOn: false, source: "virtual-keyboard"}
+              )
+              |> JS.push("midi_note_off", value: %{midi: midi})
+            }
+            class={"absolute top-0 h-[60%] border border-slate-900 rounded-b z-10 cursor-pointer transition-colors " <>
+              cond do
+                is_target -> "bg-blue-600"
+                is_active -> if(is_root, do: "bg-purple-700", else: "bg-slate-600")
+                true -> "bg-slate-800 hover:bg-slate-700"
+              end}
+            style={"left: #{key.left}%; width: #{@white_width * 0.6}%;"}
+          >
+            <%= if finger do %>
+              <div class="absolute bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white text-blue-600 rounded-full flex items-center justify-center text-[8px] font-bold">
+                {finger}
+              </div>
             <% end %>
-          <% end %>
-        </div>
+          </div>
+        <% end %>
       </div>
     </div>
     """
+  end
+
+  defp build_keys do
+    white_width = 100.0 / @total_white_keys
+    black_offsets = %{1 => 0.55, 3 => 0.75, 6 => 0.5, 8 => 0.65, 10 => 0.8}
+
+    {keys, _} =
+      Enum.reduce(@first_midi..@last_midi, {[], 0}, fn midi, {acc, w_idx} ->
+        semitone = rem(midi, 12)
+        is_black = semitone in [1, 3, 6, 8, 10]
+
+        if is_black do
+          offset = Map.get(black_offsets, semitone, 0.6)
+          left = (w_idx - 1 + offset) * white_width
+          {[%{midi: midi, type: :black, left: left} | acc], w_idx}
+        else
+          left = w_idx * white_width
+          {[%{midi: midi, type: :white, left: left} | acc], w_idx + 1}
+        end
+      end)
+
+    Enum.reverse(keys)
+  end
+
+  defp build_finger_map(nil), do: %{}
+
+  defp build_finger_map(step) do
+    notes = Map.get(step, :notes) || [Map.get(step, :note)]
+    fingers = Map.get(step, :fingers) || [Map.get(step, :finger)]
+
+    if notes && fingers do
+      notes_list = List.wrap(notes) |> List.flatten()
+      fingers_list = List.wrap(fingers) |> List.flatten()
+
+      if length(fingers_list) == 1 and length(notes_list) > 1 do
+        val = List.first(fingers_list)
+        Map.new(notes_list, fn n -> {n, val} end)
+      else
+        Enum.zip(notes_list, fingers_list) |> Map.new()
+      end
+    else
+      %{}
+    end
   end
 end

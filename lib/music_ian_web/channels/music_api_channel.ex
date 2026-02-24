@@ -268,8 +268,165 @@ defmodule MusicIanWeb.MusicApiChannel do
   end
 
   # ─────────────────────────────────────────────────────────────
+  # MUSICCORE: SCALE - DIATONIC CHORDS
+  # ─────────────────────────────────────────────────────────────
+
+  # Genera triadas diatónicas para una escala.
+  #
+  # Params: {root: int, scale_type: string}
+  # Response: {triads: List of chords by degree}
+  def handle_in(
+        "mcp.scale_diatonic_triads",
+        %{"root" => root, "scale_type" => scale_type},
+        socket
+      ) do
+    scale_atom = String.to_atom(scale_type)
+    scale = MusicIan.MusicCore.Scale.new(root, scale_atom)
+    triads = MusicIan.MusicCore.Scale.diatonic_triads(scale)
+
+    triads_data =
+      triads
+      |> Enum.with_index(1)
+      |> Enum.map(fn {chord, degree} ->
+        %{
+          "degree" => degree,
+          "root" => chord.root.name,
+          "quality" => Atom.to_string(chord.quality),
+          "notes" => Enum.map(chord.notes, &%{"name" => &1.name, "midi" => &1.midi})
+        }
+      end)
+
+    response = %{
+      "success" => true,
+      "result" => %{
+        "scale_root" => scale.root.name,
+        "scale_type" => scale_type,
+        "triads" => triads_data
+      },
+      "metadata" => %{"execution_time_ms" => 0}
+    }
+
+    {:reply, {:ok, response}, socket}
+  rescue
+    e ->
+      error_response("mcp.scale_diatonic_triads", e, socket)
+  end
+
+  # Genera acordes de séptima diatónicos para una escala.
+  #
+  # Params: {root: int, scale_type: string}
+  # Response: {sevenths: List of 7th chords by degree}
+  def handle_in(
+        "mcp.scale_diatonic_sevenths",
+        %{"root" => root, "scale_type" => scale_type},
+        socket
+      ) do
+    scale_atom = String.to_atom(scale_type)
+    scale = MusicIan.MusicCore.Scale.new(root, scale_atom)
+    sevenths = MusicIan.MusicCore.Scale.diatonic_sevenths(scale)
+
+    sevenths_data =
+      sevenths
+      |> Enum.with_index(1)
+      |> Enum.map(fn {chord, degree} ->
+        %{
+          "degree" => degree,
+          "root" => chord.root.name,
+          "quality" => Atom.to_string(chord.quality),
+          "notes" => Enum.map(chord.notes, &%{"name" => &1.name, "midi" => &1.midi})
+        }
+      end)
+
+    response = %{
+      "success" => true,
+      "result" => %{
+        "scale_root" => scale.root.name,
+        "scale_type" => scale_type,
+        "sevenths" => sevenths_data
+      },
+      "metadata" => %{"execution_time_ms" => 0}
+    }
+
+    {:reply, {:ok, response}, socket}
+  rescue
+    e ->
+      error_response("mcp.scale_diatonic_sevenths", e, socket)
+  end
+
+  # ─────────────────────────────────────────────────────────────
   # MUSICCORE: THEORY OPERATIONS
   # ─────────────────────────────────────────────────────────────
+
+  # Genera el Círculo de Quintas completo.
+  #
+  # Params: none
+  # Response: {sectors: List of {label, minor, midi, minor_midi, angle}}
+  def handle_in("mcp.theory_circle_of_fifths", _params, socket) do
+    sectors = MusicIan.MusicCore.Theory.generate_circle_of_fifths()
+
+    response = %{
+      "success" => true,
+      "result" => %{
+        "sectors" => sectors
+      },
+      "metadata" => %{"execution_time_ms" => 0}
+    }
+
+    {:reply, {:ok, response}, socket}
+  rescue
+    e ->
+      error_response("mcp.theory_circle_of_fifths", e, socket)
+  end
+
+  # Obtiene las alteraciones de una armadura.
+  #
+  # Params: {key: string}
+  # Response: {accidentals: map of note => accidental}
+  def handle_in("mcp.theory_key_accidentals", %{"key" => key}, socket) do
+    accidentals = MusicIan.MusicCore.Theory.get_key_signature_accidentals(key)
+
+    response = %{
+      "success" => true,
+      "result" => %{
+        "key" => key,
+        "accidentals" => accidentals
+      },
+      "metadata" => %{"execution_time_ms" => 0}
+    }
+
+    {:reply, {:ok, response}, socket}
+  rescue
+    e ->
+      error_response("mcp.theory_key_accidentals", e, socket)
+  end
+
+  # Analiza contexto teórico de una escala.
+  #
+  # Params: {root: int, scale_type: string, use_flats: bool}
+  # Response: {analysis: map with theoretical context}
+  def handle_in(
+        "mcp.theory_analyze_context",
+        %{"root" => root, "scale_type" => scale_type} = params,
+        socket
+      ) do
+    use_flats = Map.get(params, "use_flats", false)
+    scale_atom = String.to_atom(scale_type)
+    scale = MusicIan.MusicCore.Scale.new(root, scale_atom, use_flats: use_flats)
+
+    analysis =
+      MusicIan.MusicCore.Theory.analyze_context(scale.root, scale_atom, scale.notes, use_flats)
+
+    response = %{
+      "success" => true,
+      "result" => analysis,
+      "metadata" => %{"execution_time_ms" => 0}
+    }
+
+    {:reply, {:ok, response}, socket}
+  rescue
+    e ->
+      error_response("mcp.theory_analyze_context", e, socket)
+  end
 
   # Determina la tonalidad (key signature) de un conjunto de notas.
   #
@@ -339,15 +496,228 @@ defmodule MusicIanWeb.MusicApiChannel do
   end
 
   # ─────────────────────────────────────────────────────────────
-  # PRACTICE: LESSON OPERATIONS
+  # PRACTICE: LESSON MANAGER OPERATIONS
   # ─────────────────────────────────────────────────────────────
 
-  # Inicia una sesión de lección.
+  # Obtiene una lección por ID.
   #
-  # Params: {lesson_id: string, user_id: int}
-  # Response: {session_id: str, lesson_id: str, phase: str, current_step: int}
+  # Params: {lesson_id: string}
+  # Response: {lesson: map with lesson data}
+  def handle_in("mcp.lesson_get", %{"lesson_id" => lesson_id}, socket) do
+    case MusicIan.Practice.Manager.LessonManager.get_lesson(lesson_id) do
+      nil ->
+        response = %{
+          "success" => false,
+          "error" => %{"code" => -32_602, "message" => "Lesson not found: #{lesson_id}"},
+          "metadata" => %{"execution_time_ms" => 0}
+        }
+
+        {:reply, {:error, response}, socket}
+
+      lesson ->
+        lesson_map = MusicIan.Practice.Helper.LessonHelperConvert.schema_to_map(lesson)
+
+        response = %{
+          "success" => true,
+          "result" => lesson_map,
+          "metadata" => %{"execution_time_ms" => 0}
+        }
+
+        {:reply, {:ok, response}, socket}
+    end
+  rescue
+    e ->
+      error_response("mcp.lesson_get", e, socket)
+  end
+
+  # Lista todas las lecciones.
+  #
+  # Params: none
+  # Response: {lessons: List of lesson maps}
+  def handle_in("mcp.lesson_list", _params, socket) do
+    lessons = MusicIan.Practice.Manager.LessonManager.list_all_lessons()
+    lesson_maps = MusicIan.Practice.Helper.LessonHelperConvert.schemas_to_maps(lessons)
+
+    response = %{
+      "success" => true,
+      "result" => %{
+        "lessons" => lesson_maps,
+        "count" => length(lesson_maps)
+      },
+      "metadata" => %{"execution_time_ms" => 0}
+    }
+
+    {:reply, {:ok, response}, socket}
+  rescue
+    e ->
+      error_response("mcp.lesson_list", e, socket)
+  end
+
+  # Obtiene estadísticas globales.
+  #
+  # Params: none
+  # Response: {stats: map with global stats}
+  def handle_in("mcp.stats_global", _params, socket) do
+    stats = MusicIan.Practice.Manager.LessonManager.get_stats()
+
+    response = %{
+      "success" => true,
+      "result" => stats,
+      "metadata" => %{"execution_time_ms" => 0}
+    }
+
+    {:reply, {:ok, response}, socket}
+  rescue
+    e ->
+      error_response("mcp.stats_global", e, socket)
+  end
+
+  # Obtiene estadísticas de una lección específica.
+  #
+  # Params: {lesson_id: string}
+  # Response: {stats: map with lesson stats}
+  def handle_in("mcp.stats_lesson", %{"lesson_id" => lesson_id}, socket) do
+    stats = MusicIan.Practice.Manager.LessonManager.get_lesson_stats(lesson_id)
+
+    response = %{
+      "success" => true,
+      "result" => stats,
+      "metadata" => %{"execution_time_ms" => 0}
+    }
+
+    {:reply, {:ok, response}, socket}
+  rescue
+    e ->
+      error_response("mcp.stats_lesson", e, socket)
+  end
+
+  # Obtiene el resultado más reciente de una lección.
+  #
+  # Params: {lesson_id: string}
+  # Response: {result: map or null}
+  def handle_in("mcp.lesson_latest_result", %{"lesson_id" => lesson_id}, socket) do
+    result = MusicIan.Practice.Manager.LessonManager.get_latest_result_for_lesson(lesson_id)
+
+    result_data =
+      case result do
+        nil ->
+          nil
+
+        r ->
+          %{
+            "lesson_id" => r.lesson_id,
+            "correct_count" => r.correct_count,
+            "error_count" => r.error_count,
+            "accuracy_percent" => r.accuracy_percent,
+            "timing_score" => r.timing_score,
+            "bpm_used" => r.bpm_used,
+            "completed_at" => r.completed_at
+          }
+      end
+
+    response = %{
+      "success" => true,
+      "result" => result_data,
+      "metadata" => %{"execution_time_ms" => 0}
+    }
+
+    {:reply, {:ok, response}, socket}
+  rescue
+    e ->
+      error_response("mcp.lesson_latest_result", e, socket)
+  end
+
+  # ─────────────────────────────────────────────────────────────
+  # PRACTICE: EXERCISE GENERATOR
+  # ─────────────────────────────────────────────────────────────
+
+  # Genera un ejercicio dinámico.
+  #
+  # Params: {generator: string, params: map}
+  # Response: {exercise: map with target_note, prompt, difficulty}
+  def handle_in("mcp.exercise_generate", %{"generator" => generator, "params" => params}, socket) do
+    exercise = MusicIan.Practice.ExerciseGenerator.generate(generator, params)
+
+    response = %{
+      "success" => true,
+      "result" => exercise,
+      "metadata" => %{"execution_time_ms" => 0}
+    }
+
+    {:reply, {:ok, response}, socket}
+  rescue
+    e ->
+      error_response("mcp.exercise_generate", e, socket)
+  end
+
+  # ─────────────────────────────────────────────────────────────
+  # PRACTICE: FSM OPERATIONS (Stateless - for testing/validation)
+  # ─────────────────────────────────────────────────────────────
+
+  # Crea un nuevo FSM para una lección (stateless snapshot).
+  #
+  # Params: {lesson_id: string}
+  # Response: {fsm_state: map with current FSM state}
+  def handle_in("mcp.fsm_new", %{"lesson_id" => lesson_id}, socket) do
+    fsm = MusicIan.Practice.FSM.LessonFSM.new(lesson_id)
+
+    fsm_data = %{
+      "lesson_id" => fsm.lesson_id,
+      "phase" => Atom.to_string(fsm.lesson_phase),
+      "current_step" => fsm.current_step,
+      "total_steps" => length(fsm.steps),
+      "metronome_enabled" => fsm.metronome_enabled,
+      "bpm" => fsm.bpm,
+      "correct_count" => fsm.correct_count,
+      "error_count" => fsm.error_count
+    }
+
+    response = %{
+      "success" => true,
+      "result" => fsm_data,
+      "metadata" => %{"execution_time_ms" => 0}
+    }
+
+    {:reply, {:ok, response}, socket}
+  rescue
+    e ->
+      error_response("mcp.fsm_new", e, socket)
+  end
+
+  # Calcula duración de práctica para una lección.
+  #
+  # Params: {lesson_id: string, bpm: int (optional)}
+  # Response: {duration_ms: int, beats: int}
+  def handle_in("mcp.fsm_practice_duration", %{"lesson_id" => lesson_id} = params, socket) do
+    bpm = Map.get(params, "bpm")
+    fsm = MusicIan.Practice.FSM.LessonFSM.new(lesson_id)
+    fsm = if bpm, do: %{fsm | bpm: bpm}, else: fsm
+    duration_ms = MusicIan.Practice.FSM.LessonFSM.calculate_practice_duration(fsm)
+    beat_map = MusicIan.Practice.FSM.LessonFSM.calculate_beat_map(fsm)
+
+    response = %{
+      "success" => true,
+      "result" => %{
+        "duration_ms" => duration_ms,
+        "total_beats" => length(beat_map),
+        "bpm" => fsm.bpm,
+        "beat_map" => beat_map
+      },
+      "metadata" => %{"execution_time_ms" => 0}
+    }
+
+    {:reply, {:ok, response}, socket}
+  rescue
+    e ->
+      error_response("mcp.fsm_practice_duration", e, socket)
+  end
+
+  # ─────────────────────────────────────────────────────────────
+  # LEGACY: LESSON OPERATIONS (mantener compatibilidad)
+  # ─────────────────────────────────────────────────────────────
+
+  # Inicia una sesión de lección (legacy).
   def handle_in("mcp.lesson_start", %{"lesson_id" => lesson_id, "user_id" => user_id}, socket) do
-    # Iniciar con LessonFSM
     _lesson_state = MusicIan.Practice.FSM.LessonFSM.new(lesson_id)
     session_id = "session_#{user_id}_#{lesson_id}_#{System.unique_integer()}"
 
@@ -370,12 +740,8 @@ defmodule MusicIanWeb.MusicApiChannel do
       error_response("mcp.lesson_start", e, socket)
   end
 
-  # Valida un paso de lección.
-  #
-  # Params: {session_id: string, played_notes: List}
-  # Response: {valid: bool, feedback: str, accuracy: float, next_action: str}
+  # Valida un paso de lección (legacy).
   def handle_in("mcp.lesson_validate_step", %{"played_notes" => _played_notes}, socket) do
-    # Para MVP, simplemente validamos si las notas contienen los elementos esperados
     accuracy = 1.0
 
     response = %{
@@ -479,7 +845,7 @@ defmodule MusicIanWeb.MusicApiChannel do
     response = %{
       "success" => false,
       "error" => %{
-        "code" => -32603,
+        "code" => -32_603,
         "message" => "Internal error: #{inspect(error)}"
       },
       "metadata" => %{"execution_time_ms" => 0}

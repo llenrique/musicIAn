@@ -17,6 +17,7 @@ defmodule MusicIan.MusicCore.Chord do
           | :minor7
           | :minor7b5
           | :diminished7
+          | :unknown
 
   @type t :: %__MODULE__{
           root: Note.t(),
@@ -101,43 +102,83 @@ defmodule MusicIan.MusicCore.Chord do
 
   @doc """
   Detecta qué acorde forman un conjunto de notas MIDI.
-  Retorna el acorde más probable basado en los intervalos detectados.
+  Prueba todas las rotaciones de pitch classes para encontrar el acorde correcto,
+  incluyendo inversiones. Si no hay coincidencia, devuelve quality: :unknown.
 
-  Ejemplo:
-    iex> Chord.from_midi_notes([60, 64, 67])
-    %Chord{root: %Note{name: "C", ...}, quality: :major, ...}
+  ## Ejemplo
+
+      iex> Chord.from_midi_notes([60, 64, 67])
+      %Chord{root: %Note{name: "C"}, quality: :major, inversion: 0}
+
+      iex> Chord.from_midi_notes([64, 67, 72])   # C Mayor primera inversión
+      %Chord{root: %Note{name: "C"}, quality: :major, inversion: 1}
   """
   @spec from_midi_notes([integer()]) :: t()
   def from_midi_notes([_ | _] = midi_notes) do
-    # Normaliza notas a octava 0 para identificar intervalos
-    normalized =
+    pitch_classes =
       midi_notes
       |> Enum.map(&rem(&1, 12))
       |> Enum.sort()
       |> Enum.uniq()
 
-    # La nota raíz es la más grave (primer MIDI)
-    root_midi = Enum.min(midi_notes)
-    root = Note.new(root_midi)
+    case find_chord_root_and_quality(pitch_classes) do
+      {root_pc, quality} ->
+        root_midi = find_root_midi(midi_notes, root_pc)
+        inv = compute_inversion(Enum.sort(midi_notes), root_pc)
+        chord = new(Note.new(root_midi), quality)
+        %{chord | inversion: inv}
 
-    # Identifica la calidad del acorde basado en los intervalos
-    quality = identify_chord_quality(normalized)
+      nil ->
+        root_midi = Enum.min(midi_notes)
 
-    new(root, quality)
+        %__MODULE__{
+          root: Note.new(root_midi),
+          quality: :unknown,
+          notes: midi_notes |> Enum.sort() |> Enum.map(&Note.new/1),
+          inversion: 0
+        }
+    end
   end
 
-  # Triads
+  # Prueba cada pitch class como raíz potencial y verifica si los intervalos coinciden
+  defp find_chord_root_and_quality(pitch_classes) do
+    Enum.find_value(pitch_classes, fn potential_root ->
+      intervals =
+        pitch_classes
+        |> Enum.map(&rem(&1 - potential_root + 12, 12))
+        |> Enum.sort()
+
+      case identify_chord_quality(intervals) do
+        :unknown -> nil
+        quality -> {potential_root, quality}
+      end
+    end)
+  end
+
+  # Encuentra el MIDI más grave con el pitch class del acorde detectado
+  defp find_root_midi(midi_notes, root_pc) do
+    midi_notes
+    |> Enum.filter(&(rem(&1, 12) == root_pc))
+    |> Enum.min()
+  end
+
+  # Calcula la inversión: cuántas notas del acorde suenan antes de la raíz (en orden)
+  defp compute_inversion(sorted_midi_notes, root_pc) do
+    Enum.find_index(sorted_midi_notes, &(rem(&1, 12) == root_pc)) || 0
+  end
+
+  # Tríadas
   defp identify_chord_quality([0, 4, 7]), do: :major
   defp identify_chord_quality([0, 3, 7]), do: :minor
   defp identify_chord_quality([0, 3, 6]), do: :diminished
   defp identify_chord_quality([0, 4, 8]), do: :augmented
   defp identify_chord_quality([0, 2, 7]), do: :sus2
   defp identify_chord_quality([0, 5, 7]), do: :sus4
-  # Seventh chords
+  # Séptimas
   defp identify_chord_quality([0, 4, 7, 11]), do: :major7
   defp identify_chord_quality([0, 4, 7, 10]), do: :dominant7
   defp identify_chord_quality([0, 3, 7, 10]), do: :minor7
   defp identify_chord_quality([0, 3, 6, 10]), do: :minor7b5
   defp identify_chord_quality([0, 3, 6, 9]), do: :diminished7
-  defp identify_chord_quality(_), do: :major
+  defp identify_chord_quality(_), do: :unknown
 end

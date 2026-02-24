@@ -6,6 +6,7 @@
 #   - steps: Solo steps con notas (practice, chord, generated)
 #   - bpm: BPM sugerido para la práctica
 #   - timing_strictness: 0=standby (sin penalización), 1-5 = progresivo
+#   - loop: true = práctica repetitiva, false = secuencia única
 #
 # El campo :type en cada step determina cómo el motor lo valida:
 #   "practice"    → debe coincidir con step[:note]
@@ -14,14 +15,18 @@
 #
 # Los steps de "observation" fueron eliminados. Su texto va en :intro.
 #
+# LOOP CONFIGURATION:
+#   loop: true  → Lecciones de práctica repetitiva (escalas, ejercicios técnicos)
+#   loop: false → Lecciones explicativas, melodías, evaluaciones
+#
 # Progresión pedagógica del Módulo 1:
-#   1.1 El mapa visual del teclado          → encontrar todos los Do's (C2→C7)
-#   1.2 El patrón 2-3 de teclas negras      → navegar usando grupos de negras
-#   1.3 El Do central (C4) como hogar       → encontrar C4 con ojos cerrados
-#   1.4 Octavas: el patrón se repite        → saltar octavas de Do en orden
-#   1.5 Encuentra cualquier Do (generado)   → ejercicios aleatorios de octavas
-#   1.6 Posición de la mano                 → técnica base + primeras notas reales
-#   1.7 Panorama completo del teclado       → Do en todas las octavas (generado)
+#   1.1 El mapa visual del teclado          → loop: false (exploración guiada)
+#   1.2 El patrón 2-3 de teclas negras      → loop: false (aprendizaje de concepto)
+#   1.3 El Do central (C4) como hogar       → loop: true (memoria muscular)
+#   1.4 Octavas: el patrón se repite        → loop: true (práctica de octavas)
+#   1.5 Encuentra cualquier Do (generado)   → loop: true (ejercicios aleatorios)
+#   1.6 Posición de la mano                 → loop: false (técnica inicial)
+#   1.7 Panorama completo del teclado       → loop: true (integración práctica)
 
 alias MusicIan.Repo
 alias MusicIan.Curriculum.Lesson
@@ -50,6 +55,7 @@ lessons_module_01 = [
     bpm: 60,
     timing_strictness: 0,
     time_signature: "4/4",
+    loop: false,
     module_id: "mod_001_piano_fundamentals",
     order: 1,
     steps: [
@@ -57,7 +63,8 @@ lessons_module_01 = [
         type: "practice",
         text: "Toca el Do más grave del piano (C2 — el Do más a la izquierda del teclado).",
         note: 36,
-        hint: "Busca el primer grupo de 2 negras desde la izquierda. La blanca antes de ellas es C2.",
+        hint:
+          "Busca el primer grupo de 2 negras desde la izquierda. La blanca antes de ellas es C2.",
         finger: 1,
         duration: 1
       },
@@ -135,6 +142,7 @@ lessons_module_01 = [
     bpm: 60,
     timing_strictness: 0,
     time_signature: "4/4",
+    loop: false,
     module_id: "mod_001_piano_fundamentals",
     order: 2,
     steps: [
@@ -234,6 +242,7 @@ lessons_module_01 = [
     bpm: 60,
     timing_strictness: 0,
     time_signature: "4/4",
+    loop: true,
     module_id: "mod_001_piano_fundamentals",
     order: 3,
     steps: [
@@ -306,6 +315,7 @@ lessons_module_01 = [
     bpm: 60,
     timing_strictness: 0,
     time_signature: "4/4",
+    loop: true,
     module_id: "mod_001_piano_fundamentals",
     order: 4,
     steps: [
@@ -423,6 +433,7 @@ lessons_module_01 = [
     bpm: 60,
     timing_strictness: 0,
     time_signature: "4/4",
+    loop: true,
     module_id: "mod_001_piano_fundamentals",
     order: 5,
     steps: [
@@ -533,6 +544,7 @@ lessons_module_01 = [
     bpm: 60,
     timing_strictness: 0,
     time_signature: "4/4",
+    loop: false,
     module_id: "mod_001_piano_fundamentals",
     order: 6,
     steps: [
@@ -608,6 +620,7 @@ lessons_module_01 = [
     bpm: 60,
     timing_strictness: 0,
     time_signature: "4/4",
+    loop: true,
     module_id: "mod_001_piano_fundamentals",
     order: 7,
     steps: [
