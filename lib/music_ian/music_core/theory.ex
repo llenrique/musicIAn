@@ -5,7 +5,190 @@ defmodule MusicIan.MusicCore.Theory do
   Independent of UI or Education logic.
   """
 
-  alias MusicIan.MusicCore.Note
+  alias MusicIan.MusicCore.{Note, Scale}
+
+  # ============================================================================
+  # MODAL SYSTEM
+  # Los 7 modos se derivan de tocar la escala mayor desde diferentes grados.
+  # El patrón interválico es fijo para cada modo.
+  # ============================================================================
+
+  @modal_info %{
+    # Jónico (I) = Escala Mayor Natural
+    major: %{
+      spanish_name: "Jónico",
+      degree: 1,
+      degree_roman: "I",
+      pattern: "T-T-S-T-T-T-S",
+      pattern_list: [:t, :t, :s, :t, :t, :t, :s],
+      type: :major,
+      brightness: 2,
+      characteristic_note: nil,
+      characteristic_desc: "Referencia estándar de la escala mayor",
+      parent_offset: 0
+    },
+    # Dórico (II) - Menor con 6ª mayor
+    dorian: %{
+      spanish_name: "Dórico",
+      degree: 2,
+      degree_roman: "II",
+      pattern: "T-S-T-T-T-S-T",
+      pattern_list: [:t, :s, :t, :t, :t, :s, :t],
+      type: :minor,
+      brightness: 4,
+      characteristic_note: "6ª mayor",
+      characteristic_desc: "La 6ª mayor le da un brillo especial al modo menor",
+      parent_offset: -2
+    },
+    # Frigio (III) - Menor con 2ª menor
+    phrygian: %{
+      spanish_name: "Frigio",
+      degree: 3,
+      degree_roman: "III",
+      pattern: "S-T-T-T-S-T-T",
+      pattern_list: [:s, :t, :t, :t, :s, :t, :t],
+      type: :minor,
+      brightness: 6,
+      characteristic_note: "2ª menor",
+      characteristic_desc: "La 2ª menor crea el sonido flamenco/español",
+      parent_offset: -4
+    },
+    # Lidio (IV) - Mayor con 4ª aumentada
+    lydian: %{
+      spanish_name: "Lidio",
+      degree: 4,
+      degree_roman: "IV",
+      pattern: "T-T-T-S-T-T-S",
+      pattern_list: [:t, :t, :t, :s, :t, :t, :s],
+      type: :major,
+      brightness: 1,
+      characteristic_note: "4ª aumentada",
+      characteristic_desc: "La #4 crea el sonido más brillante y etéreo",
+      parent_offset: -5
+    },
+    # Mixolidio (V) - Mayor con 7ª menor
+    mixolydian: %{
+      spanish_name: "Mixolidio",
+      degree: 5,
+      degree_roman: "V",
+      pattern: "T-T-S-T-T-S-T",
+      pattern_list: [:t, :t, :s, :t, :t, :s, :t],
+      type: :major,
+      brightness: 3,
+      characteristic_note: "7ª menor",
+      characteristic_desc: "La b7 elimina la tensión de la sensible",
+      parent_offset: -7
+    },
+    # Eólico (VI) = Escala Menor Natural
+    natural_minor: %{
+      spanish_name: "Eólico",
+      degree: 6,
+      degree_roman: "VI",
+      pattern: "T-S-T-T-S-T-T",
+      pattern_list: [:t, :s, :t, :t, :s, :t, :t],
+      type: :minor,
+      brightness: 5,
+      characteristic_note: nil,
+      characteristic_desc: "Referencia estándar de la escala menor",
+      parent_offset: -9
+    },
+    # Locrio (VII) - Disminuido con 5ª disminuida
+    locrian: %{
+      spanish_name: "Locrio",
+      degree: 7,
+      degree_roman: "VII",
+      pattern: "S-T-T-S-T-T-T",
+      pattern_list: [:s, :t, :t, :s, :t, :t, :t],
+      type: :diminished,
+      brightness: 7,
+      characteristic_note: "5ª disminuida",
+      characteristic_desc: "La b5 crea inestabilidad total",
+      parent_offset: -11
+    }
+  }
+
+  # Orden de brillo (1 = más brillante, 7 = más oscuro)
+  @brightness_order [:lydian, :major, :mixolydian, :dorian, :natural_minor, :phrygian, :locrian]
+
+  @doc """
+  Obtiene la información del modo para un tipo de escala.
+  Retorna nil si no es un modo (ej: blues, pentatonic).
+  """
+  def get_modal_info(scale_type) do
+    Map.get(@modal_info, scale_type)
+  end
+
+  @doc """
+  Dado un modo y su raíz, calcula de qué escala mayor deriva.
+  Ejemplo: D Dorian → C Major (D - 2 semitonos = C)
+  """
+  def get_parent_major(root_midi, scale_type) do
+    case get_modal_info(scale_type) do
+      nil ->
+        nil
+
+      %{parent_offset: offset} ->
+        parent_midi = rem(root_midi + offset + 12, 12) + 60
+        parent_note = Note.new(parent_midi)
+
+        %{
+          midi: parent_midi,
+          name: parent_note.name,
+          pitch_class: rem(parent_midi, 12)
+        }
+    end
+  end
+
+  @doc """
+  Dado un modo y su raíz, calcula todos los modos relacionados (mismas notas).
+  Ejemplo: D Dorian comparte notas con C Jónico, E Frigio, F Lidio, etc.
+  """
+  def get_related_modes(root_midi, scale_type) do
+    case get_parent_major(root_midi, scale_type) do
+      nil ->
+        []
+
+      %{pitch_class: parent_pc} ->
+        # Calcular todas las raíces de los 7 modos desde el padre mayor
+        mode_offsets = [
+          {:major, 0, "Jónico"},
+          {:dorian, 2, "Dórico"},
+          {:phrygian, 4, "Frigio"},
+          {:lydian, 5, "Lidio"},
+          {:mixolydian, 7, "Mixolidio"},
+          {:natural_minor, 9, "Eólico"},
+          {:locrian, 11, "Locrio"}
+        ]
+
+        Enum.map(mode_offsets, fn {mode_type, offset, spanish} ->
+          mode_midi = rem(parent_pc + offset, 12) + 60
+          mode_note = Note.new(mode_midi)
+
+          %{
+            type: mode_type,
+            spanish_name: spanish,
+            root_midi: mode_midi,
+            root_name: mode_note.name,
+            is_current: mode_type == scale_type
+          }
+        end)
+    end
+  end
+
+  @doc """
+  Retorna el nivel de brillo de un modo (1-7, donde 1 es más brillante).
+  """
+  def get_brightness_level(scale_type) do
+    case Enum.find_index(@brightness_order, &(&1 == scale_type)) do
+      nil -> nil
+      idx -> idx + 1
+    end
+  end
+
+  @doc """
+  Retorna la lista ordenada de modos por brillo.
+  """
+  def brightness_order, do: @brightness_order
 
   @doc """
   Generates the Circle of Fifths data mathematically.
@@ -160,7 +343,7 @@ defmodule MusicIan.MusicCore.Theory do
 
   @doc """
   Generates theoretical context analysis for a scale.
-  Returns a map with structural info.
+  Returns a map with structural info including modal information.
   """
   def analyze_context(root, scale_type, scale_notes, use_flats) do
     # 1. Circle Context (relative to C)
@@ -188,10 +371,20 @@ defmodule MusicIan.MusicCore.Theory do
     # 3. Formula
     formula_text = get_scale_formula(scale_type)
 
+    # 4. Modal Info (si aplica)
+    modal_info = get_modal_info(scale_type)
+    parent_major = get_parent_major(root, scale_type)
+    related_modes = get_related_modes(root, scale_type)
+    brightness = get_brightness_level(scale_type)
+
     %{
       circle: circle_text,
       key_sig: key_sig_text,
-      formula: formula_text
+      formula: formula_text,
+      modal_info: modal_info,
+      parent_major: parent_major,
+      related_modes: related_modes,
+      brightness: brightness
     }
   end
 
@@ -284,4 +477,117 @@ defmodule MusicIan.MusicCore.Theory do
 
   defp get_scale_formula(:blues), do: "Pentatónica menor + Blue Note (b5). El alma del Blues."
   defp get_scale_formula(_), do: "Una estructura interválica única."
+
+  # ============================================================================
+  # ANÁLISIS DE NOTAS PRESIONADAS (para análisis MIDI en vivo)
+  # ============================================================================
+
+  @doc """
+  Calcula los intervalos entre notas MIDI consecutivas (ordenadas de grave a agudo).
+  Retorna lista de mapas con semitones, nombre y abreviatura del intervalo.
+
+  ## Ejemplo
+
+      iex> Theory.intervals_between([60, 64, 67])
+      [%{semitones: 4, name: "3ª Mayor", abbrev: "M3"},
+       %{semitones: 3, name: "3ª Menor", abbrev: "m3"}]
+  """
+  @spec intervals_between([integer()]) :: [map()]
+  def intervals_between(midi_notes) when length(midi_notes) < 2, do: []
+
+  def intervals_between(midi_notes) do
+    sorted = Enum.sort(midi_notes)
+
+    sorted
+    |> Enum.zip(tl(sorted))
+    |> Enum.map(fn {a, b} -> build_interval(b - a) end)
+  end
+
+  @doc """
+  Encuentra las escalas que contienen todas las notas MIDI dadas.
+  Compara pitch classes (rem midi 12) contra los intervalos de cada escala/raíz.
+  Retorna lista ordenada por nombre de escala, limitada a 8 resultados.
+
+  ## Ejemplo
+
+      iex> Theory.find_compatible_scales([60, 64, 67])
+      [%{root_name: "C", scale_type: :major, label: "C Mayor"}, ...]
+  """
+  @spec find_compatible_scales([integer()]) :: [map()]
+  def find_compatible_scales([]), do: []
+
+  def find_compatible_scales(midi_notes) do
+    pitch_classes = midi_notes |> Enum.map(&rem(&1, 12)) |> MapSet.new()
+
+    Scale.intervals_map()
+    |> Enum.flat_map(fn {type, intervals} ->
+      Enum.map(0..11, fn root_pc ->
+        scale_pcs = MapSet.new(Enum.map(intervals, &rem(root_pc + &1, 12)))
+        {root_pc, type, scale_pcs}
+      end)
+    end)
+    |> Enum.filter(fn {_root_pc, _type, scale_pcs} ->
+      MapSet.subset?(pitch_classes, scale_pcs)
+    end)
+    |> Enum.map(fn {root_pc, type, _} -> build_scale_match(root_pc, type) end)
+    |> Enum.sort_by(& &1.label)
+    |> Enum.take(8)
+  end
+
+  defp build_scale_match(root_pc, type) do
+    root_midi = root_pc + 60
+    root_name = Note.new(root_midi).name
+    type_label = scale_type_label_es(type)
+    %{root_name: root_name, scale_type: type, label: "#{root_name} #{type_label}"}
+  end
+
+  defp scale_type_label_es(:major), do: "Mayor"
+  defp scale_type_label_es(:natural_minor), do: "Menor"
+  defp scale_type_label_es(:harmonic_minor), do: "Menor Armónica"
+  defp scale_type_label_es(:melodic_minor), do: "Menor Melódica"
+  defp scale_type_label_es(:pentatonic_major), do: "Pentatónica Mayor"
+  defp scale_type_label_es(:pentatonic_minor), do: "Pentatónica Menor"
+  defp scale_type_label_es(:blues), do: "Blues"
+  defp scale_type_label_es(:dorian), do: "Dórico"
+  defp scale_type_label_es(:phrygian), do: "Frigio"
+  defp scale_type_label_es(:lydian), do: "Lidio"
+  defp scale_type_label_es(:mixolydian), do: "Mixolidio"
+  defp scale_type_label_es(:locrian), do: "Locrio"
+  defp scale_type_label_es(_), do: "Escala"
+
+  # Convierte semitones a nombre de intervalo musical
+  defp build_interval(semitones) do
+    %{semitones: semitones, name: interval_name(semitones), abbrev: interval_abbrev(semitones)}
+  end
+
+  defp interval_name(0), do: "Unísono"
+  defp interval_name(1), do: "2ª Menor"
+  defp interval_name(2), do: "2ª Mayor"
+  defp interval_name(3), do: "3ª Menor"
+  defp interval_name(4), do: "3ª Mayor"
+  defp interval_name(5), do: "4ª Justa"
+  defp interval_name(6), do: "Tritono"
+  defp interval_name(7), do: "5ª Justa"
+  defp interval_name(8), do: "6ª Menor"
+  defp interval_name(9), do: "6ª Mayor"
+  defp interval_name(10), do: "7ª Menor"
+  defp interval_name(11), do: "7ª Mayor"
+  defp interval_name(12), do: "Octava"
+  defp interval_name(n) when n > 12, do: "#{n} semitonos"
+  defp interval_name(n), do: "#{n} semitonos"
+
+  defp interval_abbrev(0), do: "P1"
+  defp interval_abbrev(1), do: "m2"
+  defp interval_abbrev(2), do: "M2"
+  defp interval_abbrev(3), do: "m3"
+  defp interval_abbrev(4), do: "M3"
+  defp interval_abbrev(5), do: "P4"
+  defp interval_abbrev(6), do: "TT"
+  defp interval_abbrev(7), do: "P5"
+  defp interval_abbrev(8), do: "m6"
+  defp interval_abbrev(9), do: "M6"
+  defp interval_abbrev(10), do: "m7"
+  defp interval_abbrev(11), do: "M7"
+  defp interval_abbrev(12), do: "P8"
+  defp interval_abbrev(_n), do: "?"
 end

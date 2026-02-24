@@ -23,7 +23,7 @@ defmodule MusicIanWeb.Components.Music.Staff do
 
       <div
         class="flex-grow flex items-center justify-center relative bg-white overflow-visible"
-        style="min-height: 275px;"
+        style="min-height: 285px;"
       >
         <div
           id="staff-container"
@@ -34,8 +34,8 @@ defmodule MusicIanWeb.Components.Music.Staff do
           data-is-lesson={"#{@lesson_active}"}
           data-explanations={Jason.encode!(@note_explanations)}
           data-time-signature={@time_signature}
-          class="w-full"
-          style="min-height: 270px;"
+          class="w-full h-full"
+          style="min-height: 280px;"
         >
         </div>
       </div>

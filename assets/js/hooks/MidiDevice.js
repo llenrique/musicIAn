@@ -64,6 +64,7 @@ const MidiDevice = {
 
     // Demo Sequencer
     this.handleEvent("play_demo_sequence", ({ tempo, steps }) => {
+      console.log("🎬 play_demo_sequence received:", { tempo, steps });
       this.startDemoSequencer(tempo, steps);
     });
 
@@ -255,8 +256,8 @@ const MidiDevice = {
     const inputs = Array.from(midiAccess.inputs.values()).map(i => i.name);
     const outputs = Array.from(midiAccess.outputs.values()).map(i => i.name);
 
-    // console.log("Available Inputs:", inputs);
-    // console.log("Available Outputs:", outputs);
+    console.log("🎹 MIDI Inputs:", inputs);
+    console.log("🔊 MIDI Outputs:", outputs);
     
     // Notify server of successful connection with retry mechanism
     this.sendConnectionStatus(inputs, outputs);
@@ -307,6 +308,7 @@ const MidiDevice = {
       return;
     }
     
+    console.log("📤 sendMidiOut:", midi, "duration:", duration, "outputs:", this.midiAccess.outputs.size);
     this.sendNoteOn(midi, 100);
     
     if (duration) {
@@ -782,8 +784,15 @@ const MidiDevice = {
 
   // Demo Sequencer Implementation
   startDemoSequencer(tempo, steps) {
+    console.log("🎬 startDemoSequencer called with:", { tempo, stepsCount: steps?.length });
     this.stopDemoSequencer();
     this.stopMetronome(); // Ensure regular metronome is off
+    
+    if (!steps || steps.length === 0) {
+      console.warn("⚠️ No steps to play in demo");
+      this.pushEvent("demo_finished", {});
+      return;
+    }
     
     const beatDurationMs = 60000 / tempo;
     let currentStepIndex = 0;
@@ -801,8 +810,10 @@ const MidiDevice = {
       this.pushEvent("demo_step_update", { step_index: step.step_index });
       
        // 2. Play Notes (if any - observation steps have no notes)
+       console.log("🎹 Demo step:", currentStepIndex, "notes:", step.notes, "duration_beats:", step.duration_beats);
        if (step.notes && step.notes.length > 0) {
          step.notes.forEach(midi => {
+           console.log("🎵 Playing MIDI note:", midi);
            this.sendMidiOut(midi, (stepDurationMs / 1000) * 0.9);
            // Trigger visual effect locally
            this.triggerLocalEffects(midi, 80, true, "demo-player");
@@ -810,6 +821,8 @@ const MidiDevice = {
                this.triggerLocalEffects(midi, 0, false, "demo-player");
            }, (stepDurationMs * 0.9));
          });
+       } else {
+         console.warn("⚠️ No notes in step:", step);
        }
 
       // 3. Play Metronome Clicks

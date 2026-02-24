@@ -58,6 +58,10 @@ defmodule MusicIan.MusicCore.Scale do
     locrian: [0, 1, 3, 5, 6, 8, 10]
   }
 
+  @doc "Devuelve el mapa de intervalos de todas las escalas (para búsquedas externas)."
+  @spec intervals_map() :: %{atom() => [integer()]}
+  def intervals_map, do: @intervals
+
   @metadata %{
     major: %{
       description: "La escala fundamental de la música occidental. Base de la tonalidad mayor.",

@@ -5,8 +5,10 @@ const MusicStaff = {
     this.div = this.el;
     this.tooltipInitialized = false;
     
-    // Store highlighted notes (Set of MIDI numbers)
+    // Store highlighted notes (Set of MIDI numbers — transient, playback)
     this.highlightedMidis = new Set();
+    // Store held notes from piano (Set of MIDI numbers — sustained until note_off)
+    this.heldMidis = new Set();
     
     // Store explanations data
     this.explanations = {};
@@ -26,6 +28,12 @@ const MusicStaff = {
     // Listen for play_note event from server
     this.handleEvent("play_note", ({ midi }) => {
       this.highlightNote(midi);
+    });
+
+    // Listen for held notes from piano (sustained until note_off)
+    this.handleEvent("highlight_held_notes", ({ midi_list }) => {
+      this.heldMidis = new Set(midi_list);
+      this.draw();
     });
 
     // Listen for local MIDI events (Optimistic UI)
@@ -112,8 +120,8 @@ const MusicStaff = {
     
     // Get parent dimensions or use clientWidth
     const width = this.div.clientWidth;
-    // Grand staff: treble Y=30 (100px tall) + bass Y=140 (100px tall) + margin = 270px minimum
-    const GRAND_STAFF_HEIGHT = 270;
+    // Grand staff: treble + bass + margins
+    const GRAND_STAFF_HEIGHT = 280;
     const containerHeight = this.div.clientHeight || 0;
     const height = Math.max(containerHeight, GRAND_STAFF_HEIGHT);
 
@@ -139,16 +147,22 @@ const MusicStaff = {
     // beatsPerBar expresado en negras (quarter notes), que es la unidad interna de duración
     const beatsPerBar = timeSigNum * (4 / timeSigDen);
 
+    // Layout constants
+    const TREBLE_Y = 40;
+    const BASS_Y = 150;
+    const STAFF_LEFT = 10;
+    const STAFF_WIDTH = width - 20;
+
     // 1. Create Staves (Grand Staff)
     // Treble
-    const staveTreble = new Stave(10, 30, width - 20);
+    const staveTreble = new Stave(STAFF_LEFT, TREBLE_Y, STAFF_WIDTH);
     staveTreble.addClef("treble");
     staveTreble.addTimeSignature(timeSignature);
     if (keySignature) staveTreble.addKeySignature(keySignature);
     staveTreble.setContext(context).draw();
 
-    // Bass (offset 10px lower than treble bottom for breathing room)
-    const staveBass = new Stave(10, 140, width - 20);
+    // Bass
+    const staveBass = new Stave(STAFF_LEFT, BASS_Y, STAFF_WIDTH);
     staveBass.addClef("bass");
     staveBass.addTimeSignature(timeSignature);
     if (keySignature) staveBass.addKeySignature(keySignature);
@@ -188,6 +202,19 @@ const MusicStaff = {
         }
     };
 
+    // Colores por grado (Do=0, Re=1, Mi=2, Fa=3, Sol=4, La=5, Si=6, Do=7)
+    // Coinciden con los colores de la barra de solfeo en SolfegeBar
+    const DEGREE_COLORS = [
+      '#f43f5e', // Do  - rose
+      '#f97316', // Re  - orange
+      '#f59e0b', // Mi  - amber
+      '#84cc16', // Fa  - lime
+      '#14b8a6', // Sol - teal
+      '#3b82f6', // La  - blue
+      '#8b5cf6', // Si  - violet
+      '#f43f5e', // Do  - rose (octava)
+    ];
+
     notesData.forEach((step, index) => {
         const duration = step.duration || "q";
         const noteBeats = durationBeats[duration] || 1;
@@ -205,25 +232,43 @@ const MusicStaff = {
         const trebleNotes = step.notes.filter(n => n.clef === "treble");
         const bassNotes = step.notes.filter(n => n.clef === "bass");
 
+        // Color por grado en modo explorador (mismo color que la barra de solfeo)
+        const degreeColor = DEGREE_COLORS[index % DEGREE_COLORS.length];
+
         // --- TREBLE VOICE ---
         if (trebleNotes.length > 0) {
             const keys = trebleNotes.map(n => n.key);
-            const note = new StaveNote({ 
-                clef: "treble", 
-                keys: keys, 
+            const note = new StaveNote({
+                clef: "treble",
+                keys: keys,
                 duration: duration,
-                auto_stem: true 
+                auto_stem: true
             });
-            
+
             // Add accidentals
             trebleNotes.forEach((n, i) => {
                 if (n.accidental) note.addModifier(new Accidental(n.accidental), i);
             });
-            
-            // Highlight
-            const shouldHighlight = isLesson ? (index === currentStepIndex) : true;
-            if (shouldHighlight && trebleNotes.some(n => this.highlightedMidis.has(n.midi))) {
+
+            const isCurrentStep = isLesson && (index === currentStepIndex);
+            const isPlaying = trebleNotes.some(n => this.highlightedMidis.has(n.midi));
+            const isHeld = !isLesson && trebleNotes.some(n => this.heldMidis.has(n.midi));
+
+            if (isCurrentStep && isPlaying) {
+                // Nota correcta durante lección - verde
+                note.setStyle({fillStyle: "#16a34a", strokeStyle: "#16a34a"});
+            } else if (isCurrentStep) {
+                // Nota objetivo durante lección - azul
+                note.setStyle({fillStyle: "#2563eb", strokeStyle: "#2563eb"});
+            } else if (isHeld) {
+                // Nota mantenida en explorador - ámbar
+                note.setStyle({fillStyle: "#f59e0b", strokeStyle: "#f59e0b"});
+            } else if (isPlaying) {
+                // Nota tocada (lección o explorador) - púrpura
                 note.setStyle({fillStyle: "#9333ea", strokeStyle: "#9333ea"});
+            } else if (!isLesson) {
+                // Explorador: colorear por grado (Do-Re-Mi)
+                note.setStyle({fillStyle: degreeColor, strokeStyle: degreeColor});
             }
             trebleTickables.push(note);
         } else {
@@ -236,22 +281,34 @@ const MusicStaff = {
         // --- BASS VOICE ---
         if (bassNotes.length > 0) {
             const keys = bassNotes.map(n => n.key);
-            const note = new StaveNote({ 
-                clef: "bass", 
-                keys: keys, 
+            const note = new StaveNote({
+                clef: "bass",
+                keys: keys,
                 duration: duration,
-                auto_stem: true 
+                auto_stem: true
             });
-            
+
             // Add accidentals
             bassNotes.forEach((n, i) => {
                 if (n.accidental) note.addModifier(new Accidental(n.accidental), i);
             });
-            
-            // Highlight
-            const shouldHighlight = isLesson ? (index === currentStepIndex) : true;
-            if (shouldHighlight && bassNotes.some(n => this.highlightedMidis.has(n.midi))) {
+
+            const isCurrentStep = isLesson && (index === currentStepIndex);
+            const isPlaying = bassNotes.some(n => this.highlightedMidis.has(n.midi));
+            const isHeld = !isLesson && bassNotes.some(n => this.heldMidis.has(n.midi));
+
+            if (isCurrentStep && isPlaying) {
+                note.setStyle({fillStyle: "#16a34a", strokeStyle: "#16a34a"});
+            } else if (isCurrentStep) {
+                note.setStyle({fillStyle: "#2563eb", strokeStyle: "#2563eb"});
+            } else if (isHeld) {
+                // Nota mantenida en explorador - ámbar
+                note.setStyle({fillStyle: "#f59e0b", strokeStyle: "#f59e0b"});
+            } else if (isPlaying) {
                 note.setStyle({fillStyle: "#9333ea", strokeStyle: "#9333ea"});
+            } else if (!isLesson) {
+                // Explorador: colorear por grado (Do-Re-Mi)
+                note.setStyle({fillStyle: degreeColor, strokeStyle: degreeColor});
             }
             bassTickables.push(note);
         } else {
@@ -301,16 +358,12 @@ const MusicStaff = {
     voiceTreble.draw(context, staveTreble);
     voiceBass.draw(context, staveBass);
 
-    // 5. Draw Cursor (Bar over current note)
-    if (notesData.length > 0 && currentStepIndex < notesData.length) {
-        // We need to map currentStepIndex (index in notesData) to index in tickables
-        // Since we added BarNotes, the indices shifted.
-        // We need to re-calculate the index in tickables array.
-        
+    // 5. Draw Cursor (indicator at current note) - only during lessons
+    if (isLesson && notesData.length > 0 && currentStepIndex < notesData.length) {
+        // Map currentStepIndex to tickables index (accounting for BarNotes)
         let tickableIndex = 0;
-        
-        // Re-simulate the loop to find the correct tickable index
         let beatSum = 0;
+        
         for (let i = 0; i < notesData.length; i++) {
             if (i === currentStepIndex) break;
             
@@ -325,44 +378,34 @@ const MusicStaff = {
             tickableIndex++; // The note itself
             
             beatSum += beats;
-            if (beatSum >= 4) {
+            if (beatSum >= beatsPerBar) {
                 tickableIndex++; // The bar line
                 beatSum = 0;
             }
         }
         
-        // Now tickableIndex points to the note in tickables array
-        // We can pick either treble or bass tickable since they are aligned
         const targetNote = trebleTickables[tickableIndex];
 
         if (targetNote && targetNote.getAbsoluteX) {
             const noteX = targetNote.getAbsoluteX();
+            
+            // Draw subtle vertical line
             context.beginPath();
-            context.moveTo(noteX, 30);
-            context.lineTo(noteX, 250);
+            context.moveTo(noteX, TREBLE_Y);
+            context.lineTo(noteX, BASS_Y + 80);
             context.lineWidth = 2;
-            context.strokeStyle = "#ef4444"; // Red-500
+            context.strokeStyle = "rgba(37, 99, 235, 0.5)"; // Blue with 50% opacity
             context.stroke();
             
+            // Draw small triangle at top pointing down
             context.beginPath();
-            context.moveTo(noteX - 5, 20);
-            context.lineTo(noteX + 5, 20);
-            context.lineTo(noteX, 30);
-            context.fillStyle = "#ef4444";
+            context.moveTo(noteX - 6, TREBLE_Y - 12);
+            context.lineTo(noteX + 6, TREBLE_Y - 12);
+            context.lineTo(noteX, TREBLE_Y - 2);
+            context.closePath();
+            context.fillStyle = "#2563eb"; // Blue-600
             context.fill();
         }
-        
-        // Highlight played notes (Real-time feedback)
-        // Check if any highlighted MIDI matches notes in this step
-        const currentStep = notesData[currentStepIndex];
-        if (currentStep && currentStep.notes) {
-             const stepMidis = currentStep.notes.map(n => n.midi);
-             // Check if user is playing any of these
-             // This is handled by the draw loop above (setStyle purple)
-             // But maybe we want to show *any* note played?
-             // The current implementation highlights ANY note played if it exists in the score.
-             // That satisfies "reflect what is being played".
-         }
      }
      
      // Initialize tooltip AFTER SVG is rendered

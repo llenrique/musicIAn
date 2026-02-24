@@ -39,6 +39,7 @@ defmodule MusicIan.Practice.Helper.LessonHelperConvert do
       cognitive_complexity: lesson.cognitive_complexity || "basic",
       motor_complexity: lesson.motor_complexity || "basic",
       duration_minutes: lesson.duration_minutes,
+      loop: lesson.loop || false,
       module_id: lesson.module_id,
       order: lesson.order
     }

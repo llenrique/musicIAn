@@ -6,6 +6,11 @@
 # Emotional arc: ubicación → movimiento
 # Cognitive load: Gradual - memory formation with repetition
 # Motor complexity: Gradual - intentional key pressing and transitions
+#
+# LOOP CONFIGURATION:
+#   2.1-2.5: loop: false (concept learning, one-time understanding)
+#   2.6-2.7: loop: true (scale practice, repetitive drilling)
+#   2.8: loop: true (random recognition, ear training)
 
 alias MusicIan.Repo
 alias MusicIan.Curriculum.Lesson
@@ -24,17 +29,66 @@ lessons_module_02 = [
       "Todas las teclas blancas tienen nombres. Solo hay 7 nombres diferentes, y luego se repiten. Los nombres son: Do, Re, Mi, Fa, Sol, La, Si. Después vuelve a Do.",
     metronome: false,
     time_signature: "4/4",
+    loop: false,
     module_id: "mod_002_first_octave",
     order: 1,
     steps: [
-      %{text: "Do (C) - Aquí está", note: 60, hint: "A la izquierda de 2 negras", finger: 1, duration: 1},
-      %{text: "Re (D) - Una blanca a la derecha", note: 62, hint: "Después de Do", finger: 2, duration: 1},
-      %{text: "Mi (E) - Una blanca a la derecha", note: 64, hint: "Después de Re", finger: 3, duration: 1},
-      %{text: "Fa (F) - Una blanca a la derecha", note: 65, hint: "A la izquierda de 3 negras", finger: 4, duration: 1},
-      %{text: "Sol (G) - Una blanca a la derecha", note: 67, hint: "En el medio de 3 negras", finger: 5, duration: 1},
-      %{text: "La (A) - Una blanca a la derecha", note: 69, hint: "Entre dos negras", finger: 5, duration: 1},
-      %{text: "Si (B) - Una blanca a la derecha", note: 71, hint: "A la derecha de 3 negras", finger: 5, duration: 1},
-      %{text: "Do (C) nuevamente - ¡Se repite!", note: 72, hint: "Una octava más arriba", finger: 5, duration: 1}
+      %{
+        text: "Do (C) - Aquí está",
+        note: 60,
+        hint: "A la izquierda de 2 negras",
+        finger: 1,
+        duration: 1
+      },
+      %{
+        text: "Re (D) - Una blanca a la derecha",
+        note: 62,
+        hint: "Después de Do",
+        finger: 2,
+        duration: 1
+      },
+      %{
+        text: "Mi (E) - Una blanca a la derecha",
+        note: 64,
+        hint: "Después de Re",
+        finger: 3,
+        duration: 1
+      },
+      %{
+        text: "Fa (F) - Una blanca a la derecha",
+        note: 65,
+        hint: "A la izquierda de 3 negras",
+        finger: 4,
+        duration: 1
+      },
+      %{
+        text: "Sol (G) - Una blanca a la derecha",
+        note: 67,
+        hint: "En el medio de 3 negras",
+        finger: 5,
+        duration: 1
+      },
+      %{
+        text: "La (A) - Una blanca a la derecha",
+        note: 69,
+        hint: "Entre dos negras",
+        finger: 5,
+        duration: 1
+      },
+      %{
+        text: "Si (B) - Una blanca a la derecha",
+        note: 71,
+        hint: "A la derecha de 3 negras",
+        finger: 5,
+        duration: 1
+      },
+      %{
+        text: "Do (C) nuevamente - ¡Se repite!",
+        note: 72,
+        hint: "Una octava más arriba",
+        finger: 5,
+        duration: 1
+      }
     ],
     focus: "Introducing all 7 note names and establishing sequence in memory",
     new_concepts: [
@@ -54,21 +108,53 @@ lessons_module_02 = [
   %{
     id: "2_02_note_do",
     title: "2.2 La Nota Do (C)",
-    description: "Practica tocar solo la nota Do. La encontramos a la izquierda del grupo de 2 teclas negras.",
+    description:
+      "Practica tocar solo la nota Do. La encontramos a la izquierda del grupo de 2 teclas negras.",
     intro:
       "Do es la nota con la que empezamos. Está siempre a la izquierda del grupo de 2 teclas negras. Busca todos los Do que puedas en el teclado.",
     metronome: false,
     time_signature: "4/4",
+    loop: false,
     module_id: "mod_002_first_octave",
     order: 2,
     steps: [
-      %{text: "Encuentra Do Central (Do en el centro)", note: 60, hint: "Punto de referencia", finger: 1, duration: 1},
-      %{text: "Toca Do varias veces", note: 60, hint: "Recuerda el sonido", finger: 1, duration: 2},
-      %{text: "Encuentra Do a la IZQUIERDA", note: 48, hint: "Una octava más grave", finger: 1, duration: 1},
+      %{
+        text: "Encuentra Do Central (Do en el centro)",
+        note: 60,
+        hint: "Punto de referencia",
+        finger: 1,
+        duration: 1
+      },
+      %{
+        text: "Toca Do varias veces",
+        note: 60,
+        hint: "Recuerda el sonido",
+        finger: 1,
+        duration: 2
+      },
+      %{
+        text: "Encuentra Do a la IZQUIERDA",
+        note: 48,
+        hint: "Una octava más grave",
+        finger: 1,
+        duration: 1
+      },
       %{text: "Toca ese Do", note: 48, hint: "Suena más bajo", finger: 1, duration: 1},
-      %{text: "Encuentra Do a la DERECHA", note: 72, hint: "Una octava más aguda", finger: 1, duration: 1},
+      %{
+        text: "Encuentra Do a la DERECHA",
+        note: 72,
+        hint: "Una octava más aguda",
+        finger: 1,
+        duration: 1
+      },
       %{text: "Toca ese Do", note: 72, hint: "Suena más alto", finger: 1, duration: 1},
-      %{text: "Alterna entre los tres Do", note: 60, hint: "Izquierda - Centro - Derecha", finger: 1, duration: 2}
+      %{
+        text: "Alterna entre los tres Do",
+        note: 60,
+        hint: "Izquierda - Centro - Derecha",
+        finger: 1,
+        duration: 2
+      }
     ],
     focus: "Isolating single note name, multi-octave recognition, auditory anchoring",
     new_concepts: [
@@ -93,15 +179,46 @@ lessons_module_02 = [
       "Re viene después de Do. Si empiezas en Do Central y mueves un dedo a la derecha, ese es Re. Es la segunda nota blanca del patrón.",
     metronome: false,
     time_signature: "4/4",
+    loop: false,
     module_id: "mod_002_first_octave",
     order: 3,
     steps: [
       %{text: "Toca Do Central", note: 60, hint: "Punto de inicio", finger: 1, duration: 0.5},
-      %{text: "Toca Re (la blanca al lado a la derecha)", note: 62, hint: "Dedo 2", finger: 2, duration: 1},
-      %{text: "Vuelve a Do", note: 60, hint: "Atrás hacia la izquierda", finger: 1, duration: 0.5},
-      %{text: "Do-Re-Do, Do-Re-Do", note: 60, hint: "Alterna entre Do y Re", finger: 1, duration: 2},
-      %{text: "Ahora toca solo Re varias veces", note: 62, hint: "Sin Do", finger: 2, duration: 2},
-      %{text: "Encuentra Re en diferentes octavas", note: 62, hint: "Arriba y abajo", finger: 2, duration: 2}
+      %{
+        text: "Toca Re (la blanca al lado a la derecha)",
+        note: 62,
+        hint: "Dedo 2",
+        finger: 2,
+        duration: 1
+      },
+      %{
+        text: "Vuelve a Do",
+        note: 60,
+        hint: "Atrás hacia la izquierda",
+        finger: 1,
+        duration: 0.5
+      },
+      %{
+        text: "Do-Re-Do, Do-Re-Do",
+        note: 60,
+        hint: "Alterna entre Do y Re",
+        finger: 1,
+        duration: 2
+      },
+      %{
+        text: "Ahora toca solo Re varias veces",
+        note: 62,
+        hint: "Sin Do",
+        finger: 2,
+        duration: 2
+      },
+      %{
+        text: "Encuentra Re en diferentes octavas",
+        note: 62,
+        hint: "Arriba y abajo",
+        finger: 2,
+        duration: 2
+      }
     ],
     focus: "Learning second note through adjacent-key relationship to Do",
     new_concepts: [
@@ -126,15 +243,34 @@ lessons_module_02 = [
       "Mi viene después de Re. Do-Re-Mi. Es la tercera nota blanca. Buscamos a Mi mirando a la izquierda del grupo de 3 teclas negras.",
     metronome: false,
     time_signature: "4/4",
+    loop: false,
     module_id: "mod_002_first_octave",
     order: 4,
     steps: [
       %{text: "Toca Do", note: 60, hint: "Inicio", finger: 1, duration: 0.5},
       %{text: "Toca Re", note: 62, hint: "Siguiente", finger: 2, duration: 0.5},
-      %{text: "Toca Mi (la blanca al lado a la derecha)", note: 64, hint: "Dedo 3", finger: 3, duration: 1},
+      %{
+        text: "Toca Mi (la blanca al lado a la derecha)",
+        note: 64,
+        hint: "Dedo 3",
+        finger: 3,
+        duration: 1
+      },
       %{text: "Do-Re-Mi juntas", note: 60, hint: "La secuencia", finger: 1, duration: 2},
-      %{text: "Ahora toca solo Mi varias veces", note: 64, hint: "Una nota", finger: 3, duration: 2},
-      %{text: "Mi en diferentes posiciones del teclado", note: 64, hint: "Arriba y abajo", finger: 3, duration: 2}
+      %{
+        text: "Ahora toca solo Mi varias veces",
+        note: 64,
+        hint: "Una nota",
+        finger: 3,
+        duration: 2
+      },
+      %{
+        text: "Mi en diferentes posiciones del teclado",
+        note: 64,
+        hint: "Arriba y abajo",
+        finger: 3,
+        duration: 2
+      }
     ],
     focus: "Adding third note to sequence, pattern extension practice",
     new_concepts: [
@@ -159,15 +295,46 @@ lessons_module_02 = [
       "Después de Mi vienen Fa, Sol, La, Si. Luego vuelve a Do. Vamos a aprender estas cuatro notas.",
     metronome: false,
     time_signature: "4/4",
+    loop: false,
     module_id: "mod_002_first_octave",
     order: 5,
     steps: [
-      %{text: "Toca Fa (a la izquierda de 3 negras)", note: 65, hint: "Dedo 4", finger: 4, duration: 1},
-      %{text: "Toca Sol (en el medio de 3 negras)", note: 67, hint: "Dedo 5", finger: 5, duration: 1},
-      %{text: "Toca La (entre dos negras)", note: 69, hint: "Después de Sol", finger: 5, duration: 1},
-      %{text: "Toca Si (a la derecha de 3 negras)", note: 71, hint: "Penúltima", finger: 5, duration: 1},
+      %{
+        text: "Toca Fa (a la izquierda de 3 negras)",
+        note: 65,
+        hint: "Dedo 4",
+        finger: 4,
+        duration: 1
+      },
+      %{
+        text: "Toca Sol (en el medio de 3 negras)",
+        note: 67,
+        hint: "Dedo 5",
+        finger: 5,
+        duration: 1
+      },
+      %{
+        text: "Toca La (entre dos negras)",
+        note: 69,
+        hint: "Después de Sol",
+        finger: 5,
+        duration: 1
+      },
+      %{
+        text: "Toca Si (a la derecha de 3 negras)",
+        note: 71,
+        hint: "Penúltima",
+        finger: 5,
+        duration: 1
+      },
       %{text: "Y Do nuevamente", note: 72, hint: "¡Se repite!", finger: 5, duration: 1},
-      %{text: "Canta: Do-Re-Mi-Fa-Sol-La-Si-Do", note: 60, hint: "Con el nombre", finger: 1, duration: 4}
+      %{
+        text: "Canta: Do-Re-Mi-Fa-Sol-La-Si-Do",
+        note: 60,
+        hint: "Con el nombre",
+        finger: 1,
+        duration: 4
+      }
     ],
     focus: "Completing seven-note set, integrating full scale sequence",
     new_concepts: [
@@ -192,6 +359,7 @@ lessons_module_02 = [
       "Ahora que conoces los 7 nombres, vamos a tocar la escala completa lentamente. Do-Re-Mi-Fa-Sol-La-Si-Do. Recuerda los patrones de teclas negras para orientarte.",
     metronome: false,
     time_signature: "4/4",
+    loop: true,
     module_id: "mod_002_first_octave",
     order: 6,
     steps: [
@@ -227,12 +395,31 @@ lessons_module_02 = [
       "Toca la escala hacia arriba: Do-Re-Mi-Fa-Sol-La-Si-Do. Ahora hacia abajo: Do-Si-La-Sol-Fa-Mi-Re-Do. Es como subir una escalera y bajar.",
     metronome: false,
     time_signature: "4/4",
+    loop: true,
     module_id: "mod_002_first_octave",
     order: 7,
     steps: [
-      %{text: "Escala ARRIBA: Do-Re-Mi-Fa-Sol-La-Si-Do", note: 60, hint: "Sube suavemente", finger: 1, duration: 2},
-      %{text: "Pausa en Do arriba", note: 72, hint: "Momento de descanso", finger: 5, duration: 1},
-      %{text: "Escala ABAJO: Do-Si-La-Sol-Fa-Mi-Re-Do", note: 72, hint: "Baja suavemente", finger: 5, duration: 2},
+      %{
+        text: "Escala ARRIBA: Do-Re-Mi-Fa-Sol-La-Si-Do",
+        note: 60,
+        hint: "Sube suavemente",
+        finger: 1,
+        duration: 2
+      },
+      %{
+        text: "Pausa en Do arriba",
+        note: 72,
+        hint: "Momento de descanso",
+        finger: 5,
+        duration: 1
+      },
+      %{
+        text: "Escala ABAJO: Do-Si-La-Sol-Fa-Mi-Re-Do",
+        note: 72,
+        hint: "Baja suavemente",
+        finger: 5,
+        duration: 2
+      },
       %{text: "Pausa en Do abajo", note: 60, hint: "Volviste a casa", finger: 1, duration: 1},
       %{text: "Arriba-Abajo completo", note: 60, hint: "Fluida", finger: 1, duration: 4}
     ],
@@ -259,6 +446,7 @@ lessons_module_02 = [
       "Ahora vamos a practicar el reconocimiento rápido. Te decimos una nota (como 'Sol'), y tú la buscas en el teclado lo más rápido posible.",
     metronome: false,
     time_signature: "4/4",
+    loop: true,
     module_id: "mod_002_first_octave",
     order: 8,
     steps: [
@@ -269,7 +457,13 @@ lessons_module_02 = [
       %{text: "Toca Si", note: 71, hint: "Derecha de 3 negras", finger: 5, duration: 0.5},
       %{text: "Toca Fa", note: 65, hint: "Izquierda de 3 negras", finger: 4, duration: 0.5},
       %{text: "Toca Re", note: 62, hint: "Segunda blanca", finger: 2, duration: 0.5},
-      %{text: "Toca cualquier nota sin mirar", note: 60, hint: "Memoria del teclado", finger: 1, duration: 1}
+      %{
+        text: "Toca cualquier nota sin mirar",
+        note: 60,
+        hint: "Memoria del teclado",
+        finger: 1,
+        duration: 1
+      }
     ],
     focus: "Rapid note identification and kinesthetic response, breaking sequence dependency",
     new_concepts: [

@@ -18,6 +18,11 @@ defmodule MusicIan.Curriculum.Lesson do
     field :time_signature, :string, default: "4/4"
     field :timing_strictness, :integer, default: 0
 
+    # Loop configuration: determines if lesson repeats until duration_minutes is met
+    # true = repetitive practice (scales, solfege, arpeggios, ear training)
+    # false = single-pass (melodies, songs, theory explanations, evaluations)
+    field :loop, :boolean, default: false
+
     # Enriched pedagogical metadata
     field :focus, :string
     field :new_concepts, {:array, :string}, default: []
@@ -45,6 +50,7 @@ defmodule MusicIan.Curriculum.Lesson do
       :bpm,
       :time_signature,
       :timing_strictness,
+      :loop,
       :focus,
       :new_concepts,
       :confidence_level_target,

@@ -56,7 +56,9 @@ defmodule MusicIan.Practice.FSM.LessonFSM do
     # Duration control
     :target_duration_ms,
     :elapsed_practice_ms,
-    :loop_count
+    :loop_count,
+    # Loop mode: true = repeat until duration, false = single pass
+    :loop_enabled
   ]
 
   @type state :: %__MODULE__{}
@@ -97,14 +99,11 @@ defmodule MusicIan.Practice.FSM.LessonFSM do
            beat_map: nil,
            target_duration_ms: (lesson[:duration_minutes] || 0) * 60 * 1000,
            elapsed_practice_ms: 0,
-           loop_count: 0
+           loop_count: 0,
+           loop_enabled: lesson[:loop] == true
          }}
     end
   end
-
-  # -------------------------------------------------------------------------
-  # FSM Transitions
-  # -------------------------------------------------------------------------
 
   @doc "Transición a fase demo."
   def transition_to_demo(%__MODULE__{current_state: state} = fsm)
@@ -139,23 +138,24 @@ defmodule MusicIan.Practice.FSM.LessonFSM do
          stats: %{correct: 0, errors: 0, timing_penalty_total: 0},
          feedback: nil,
          step_analysis: [],
-         countdown: 10,
+         countdown: 5,
          metronome_active: false,
          current_exercise: nil,
          bpm: active_bpm,
          beat_map: nil,
          practice_start_time: nil,
          elapsed_practice_ms: 0,
-         loop_count: 0
+         loop_count: 0,
+         loop_enabled: fsm.loop_enabled
      }}
   end
 
   def transition_to_countdown(_fsm, _bpm), do: {:error, :invalid_transition}
 
   @doc "Handler de tick de cuenta atrás."
-  def handle_countdown_tick(%__MODULE__{current_state: :countdown, countdown: 10} = fsm) do
+  def handle_countdown_tick(%__MODULE__{current_state: :countdown, countdown: 5} = fsm) do
     metronome_enabled = Map.get(fsm.lesson, :metronome, false)
-    {:countdown_tick_10, %{fsm | countdown: 9, metronome_active: metronome_enabled}}
+    {:countdown_tick_5, %{fsm | countdown: 4, metronome_active: metronome_enabled}}
   end
 
   def handle_countdown_tick(%__MODULE__{current_state: :countdown, countdown: cd} = fsm)
@@ -444,9 +444,24 @@ defmodule MusicIan.Practice.FSM.LessonFSM do
 
     # Determine if we should continue, loop, or finish
     is_end_of_sequence = next_index >= total_steps
+
+    # Loop logic:
+    # - loop_enabled must be true (lesson is configured as repetitive practice)
+    # - target_duration_ms must be set (duration_minutes > 0)
+    # - elapsed time must be less than target
+    can_loop = fsm.loop_enabled and fsm.target_duration_ms > 0
     is_time_completed = fsm.target_duration_ms > 0 and new_elapsed >= fsm.target_duration_ms
-    # If target duration is 0, we fallback to "finish on sequence end" logic
-    should_finish = is_end_of_sequence and (fsm.target_duration_ms == 0 or is_time_completed)
+
+    # Should finish when:
+    # - Not a loop lesson: finish when sequence ends
+    # - Loop lesson: finish when time is completed (or sequence ends if no duration set)
+    should_finish =
+      cond do
+        not is_end_of_sequence -> false
+        not can_loop -> true
+        is_time_completed -> true
+        true -> false
+      end
 
     cond do
       # Case 1: Sequence not finished -> Continue to next step
